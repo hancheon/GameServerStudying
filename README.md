@@ -1,1 +1,1 @@
-# practice
+# Studying Game Server Programming
