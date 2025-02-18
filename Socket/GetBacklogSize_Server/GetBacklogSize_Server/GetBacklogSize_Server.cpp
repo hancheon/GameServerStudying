@@ -25,6 +25,7 @@ int wmain(int argc, wchar_t** argv)
     if (listen_sock == INVALID_SOCKET)
     {
         wprintf(L"%d\n", GetLastError());
+        closesocket(listen_sock);
         return -1;
     }
 
@@ -38,14 +39,16 @@ int wmain(int argc, wchar_t** argv)
     if (retval == SOCKET_ERROR)
     {
         wprintf(L"%d\n", GetLastError());
+        closesocket(listen_sock);
         return -1;
     }
 
     // listen
-    retval = listen(listen_sock, SOMAXCONN);
+    retval = listen(listen_sock, SOMAXCONN_HINT(65535));
     if (retval == SOCKET_ERROR)
     {
         wprintf(L"%d\n", GetLastError());
+        closesocket(listen_sock);
         return -1;
     }
     wprintf(L"클라이언트 연결 대기중\n");
