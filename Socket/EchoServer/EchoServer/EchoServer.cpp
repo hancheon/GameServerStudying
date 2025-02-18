@@ -67,6 +67,11 @@ int wmain(int argc, wchar_t** argv)
             break;
         }
 
+        linger closeOpt;
+        closeOpt.l_linger = 0;
+        closeOpt.l_onoff = 1;
+        retval = setsockopt(client_sock, SOL_SOCKET, SO_LINGER, (char*)&closeOpt, sizeof(closeOpt));
+
         wchar_t IPAddressBuf[30] = { 0 };
         InetNtop(AF_INET, &clientAddr.sin_addr, IPAddressBuf, 30);
         wprintf(L"[TCP] 클라이언트 접속\nIP 주소: %s, 포트번호: %d\n", IPAddressBuf, ntohs(clientAddr.sin_port));
