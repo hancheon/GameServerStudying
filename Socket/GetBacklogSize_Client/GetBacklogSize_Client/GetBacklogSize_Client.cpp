@@ -26,6 +26,7 @@ int wmain(int argc, wchar_t** argv)
         if (sock == INVALID_SOCKET)
         {
             wprintf(L"%d\n", GetLastError());
+            closesocket(sock);
             return -1;
         }
 
@@ -40,7 +41,20 @@ int wmain(int argc, wchar_t** argv)
         if (retval == SOCKET_ERROR)
         {
             wprintf(L"%d\n", GetLastError());
+            closesocket(sock);
             break;
+        }
+
+        // Linger 설정
+        linger closeOpt;
+        closeOpt.l_onoff = 1; // ligner on
+        closeOpt.l_linger = 0; // closesocket() 함수 대기 시간: 0ms (바로 리턴)
+        retval = setsockopt(sock, SOL_SOCKET, SO_LINGER, (char*)&closeOpt, sizeof(closeOpt));
+        if (retval == SOCKET_ERROR)
+        {
+            wprintf(L"%d\n", GetLastError());
+            closesocket(sock);
+            return -1;
         }
 
         // 실제 연결이 목적이 아니기 때문에 연결 요청 후 소켓 닫기
