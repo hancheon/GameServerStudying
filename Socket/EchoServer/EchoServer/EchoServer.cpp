@@ -1,6 +1,8 @@
 ﻿#include <iostream>
 #include <ws2tcpip.h>
 #include <winsock2.h>
+#include <MSWSock.h>
+#include <mstcpip.h>
 #include <locale.h>
 #pragma comment(lib, "ws2_32.lib")
 
@@ -53,6 +55,7 @@ int wmain(int argc, wchar_t** argv)
     }
     wprintf(L"클라이언트 연결 대기중\n");
 
+    // Linger 옵션 설정 (on)
     linger closeOpt;
     closeOpt.l_linger = 0;
     closeOpt.l_onoff = 1;
