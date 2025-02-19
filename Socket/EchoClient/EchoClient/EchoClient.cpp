@@ -23,6 +23,7 @@ int wmain(int argc, wchar_t** argv)
     if (sock == INVALID_SOCKET)
     {
         wprintf(L"%d\n", GetLastError());
+        closesocket(sock);
         return -1;
     }
 
@@ -36,6 +37,7 @@ int wmain(int argc, wchar_t** argv)
     if (retval == SOCKET_ERROR)
     {
         wprintf(L"%d\n", GetLastError());
+        closesocket(sock);
         return -1;
     }
 
