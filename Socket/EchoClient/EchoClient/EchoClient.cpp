@@ -27,6 +27,16 @@ int wmain(int argc, wchar_t** argv)
         return -1;
     }
 
+    // Nagle 옵션 설정 (off)
+    BOOL noDelay = TRUE;
+    retval = setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&noDelay, sizeof(noDelay));
+    if (retval == SOCKET_ERROR)
+    {
+        wprintf(L"%d\n", GetLastError());
+        closesocket(sock);
+        return -1;
+    }
+
     // connect
     SOCKADDR_IN servAddr;
     memset(&servAddr, 0, sizeof(servAddr));
