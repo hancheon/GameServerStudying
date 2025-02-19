@@ -25,6 +25,7 @@ int wmain(int argc, wchar_t** argv)
     if (listen_sock == INVALID_SOCKET)
     {
         wprintf(L"%d\n", GetLastError());
+        closesocket(listen_sock);
         return -1;
     }
 
@@ -38,6 +39,7 @@ int wmain(int argc, wchar_t** argv)
     if (retval == SOCKET_ERROR)
     {
         wprintf(L"%d\n", GetLastError());
+        closesocket(listen_sock);
         return -1;
     }
 
@@ -46,15 +48,26 @@ int wmain(int argc, wchar_t** argv)
     if (retval == SOCKET_ERROR)
     {
         wprintf(L"%d\n", GetLastError());
+        closesocket(listen_sock);
         return -1;
     }
     wprintf(L"클라이언트 연결 대기중\n");
+
+    linger closeOpt;
+    closeOpt.l_linger = 0;
+    closeOpt.l_onoff = 1;
+    retval = setsockopt(listen_sock, SOL_SOCKET, SO_LINGER, (char*)&closeOpt, sizeof(closeOpt));
+    if (retval == SOCKET_ERROR)
+    {
+        wprintf(L"%d\n", GetLastError());
+        closesocket(listen_sock);
+        return -1;
+    }
 
     SOCKET client_sock;
     SOCKADDR_IN clientAddr;
     int clientAddrLen;
     wchar_t buf[BUFSIZE];
-
 
     // accept
     while (1)
@@ -64,13 +77,9 @@ int wmain(int argc, wchar_t** argv)
         if (client_sock == INVALID_SOCKET)
         {
             wprintf(L"%d\n", GetLastError());
+            closesocket(client_sock);
             break;
         }
-
-        linger closeOpt;
-        closeOpt.l_linger = 0;
-        closeOpt.l_onoff = 1;
-        retval = setsockopt(client_sock, SOL_SOCKET, SO_LINGER, (char*)&closeOpt, sizeof(closeOpt));
 
         wchar_t IPAddressBuf[30] = { 0 };
         InetNtop(AF_INET, &clientAddr.sin_addr, IPAddressBuf, 30);
