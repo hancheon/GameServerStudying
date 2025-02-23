@@ -13,15 +13,27 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="소스 파일\Main">
+      <UniqueIdentifier>{f492f27f-1e93-4a44-bb04-1e487308d18c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Console">
+      <UniqueIdentifier>{993255cf-96af-4a6d-8e5f-f06616ada0b4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="OnlineStar_Client.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Console.cpp">
+      <Filter>소스 파일\Console</Filter>
+    </ClCompile>
+    <ClCompile Include="Main.cpp">
+      <Filter>소스 파일\Main</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="OnlineStar_Client.h">
-      <Filter>소스 파일</Filter>
+    <ClInclude Include="Protocol.h">
+      <Filter>소스 파일\Main</Filter>
+    </ClInclude>
+    <ClInclude Include="Console.h">
+      <Filter>소스 파일\Console</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
