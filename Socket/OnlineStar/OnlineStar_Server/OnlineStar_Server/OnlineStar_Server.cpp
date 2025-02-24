@@ -5,147 +5,316 @@
 #include "Protocol.h"
 #pragma comment(lib, "ws2_32.lib")
 
+#define PACKET_SIZE 16
+#define SCREEN_WIDTH 80
+#define SCREEN_HEIGHT 23
+#define SERVER_PORT 3000
+#define MAX_S 63
+
 // 전역 변수
 SOCKET listen_sock;
+int retval;
+int retval_wsa;
+int retval_sock;
+int retval_opt;
+int retval_bind;
+int retval_listen;
+int retval_trans;
+int retval_accept;
+int retval_send;
+int retval_recv;
 
 // Player 구조체
 struct PLAYER
 {
-    SOCKET socket;
+    SOCKET sock;
     wchar_t ipAddr[16];
     int port;
-    int starID;
+    int id;
     int xpos;
     int ypos;
     bool isAlive;
 };
+myList<PLAYER*> players;
 
-bool RecvProc();
-bool SendUnicast(PLAYER, char*); // 보낼 대상 버퍼
-bool SendBroadcast(PLAYER, char*); // 제외할 대상 버퍼
-bool Disconnect();
+bool Networking();
+bool AcceptProc();
+bool RecvProc(PLAYER*);
+bool SendUnicast(PLAYER*, char*);
+bool SendBroadcast(PLAYER*, char*);
+bool Disconnect(PLAYER*);
+bool MoveStar();
 
 
 int main()
 {
+    // 윈속 초기화
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+    {
+        retval_wsa = GetLastError();
+        return -1;
+    }
+
+    // 리슨 소켓 생성
+    listen_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (listen_sock == INVALID_SOCKET)
+    {
+        retval_sock = GetLastError();
+        closesocket(listen_sock);
+        return -1;
+    }
+
+    linger closeOpt;
+    closeOpt.l_onoff = 1;
+    closeOpt.l_linger = 0;
+    retval = setsockopt(listen_sock, SOL_SOCKET, SO_LINGER, (char*)&closeOpt, sizeof(closeOpt));
+    if (retval == SOCKET_ERROR)
+    {
+        retval_opt = GetLastError();
+        closesocket(listen_sock);
+        return -1;
+    }
+
+    // 리슨 소켓 바인딩
+    SOCKADDR_IN servAddr;
+    memset(&servAddr, 0, sizeof(servAddr));
+    servAddr.sin_family = AF_INET;
+    servAddr.sin_port = htons(SERVER_PORT);
+    servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    retval = bind(listen_sock, (SOCKADDR*)&servAddr, sizeof(servAddr));
+    if (retval == SOCKET_ERROR)
+    {
+        retval_bind = GetLastError();
+        closesocket(listen_sock);
+        return -1;
+    }
+
+    // 리슨
+    retval = listen(listen_sock, SOMAXCONN);
+    if (retval == SOCKET_ERROR)
+    {
+        retval_listen = GetLastError();
+        closesocket(listen_sock);
+        return -1;
+    }
+
+    // 논블로킹 소켓으로 전환
+    u_long nonblock = 1;
+    retval = ioctlsocket(listen_sock, FIONBIO, &nonblock);
+    if (retval == SOCKET_ERROR)
+    {
+        retval_trans = GetLastError();
+        closesocket(listen_sock);
+        return -1;
+    }
+
+    // 서버 로직
     while (1)
     {
+        // 네트워크()
+        if (!Networking())
+            return -1;
 
-        네트워크()
+        // 로직()
+        if (!MoveStar())
+            return -1;
 
-            로직()
-
-            랜더링() → 좌표 동기화 확인용(전용 클라로 만드는 경우도 있음) 해도 되고 안해도 되고
-            → 나 : 윈도우로 창 만들어보자 ?
+        // 랜더링() → 좌표 동기화 확인용(전용 클라로 만드는 경우도 있음) 해도 되고 안해도 되고 → 나 : 윈도우로 창 만들어보자 ?
 
     }
+
+    closesocket(listen_sock);
+    WSACleanup();
+    
+    return 0;
 }
 
-ID = Null;
-
-리슨 소켓 생성 바인딩 리슨
-
-while (1)
-{
-
-    네트워크()
-
-    로직()
-
-    랜더링() → 좌표 동기화 확인용(전용 클라로 만드는 경우도 있음) 해도 되고 안해도 되고
-    → 나 : 윈도우로 창 만들어보자 ?
-
-}
-
-bool networking()
+bool Networking()
 {
     FD_SET readSet;
-    FD_ZERO(readSet);
-    FD_SET(리슨, &readSet);
+    FD_ZERO(&readSet);
+    FD_SET(listen_sock, &readSet);
 
-    for (PlayerList ~) // 리슨 소켓에 들어온 클라 연결 요청을 유저로 승격
-    {
-        FD_SET(Player→Socket, &readSet);
-    }
     // 타임아웃: 요청한 기능을 못할 때 최대 대기시간
     // timeval = NULL로 설정하는 이유: 어차피 서버 로직 없으니까 항상 기다리고 있어도 괜찮음
-    ret = select(0, readSet, nullptr, nullptr, NULL);
-   
-    if (FD_ISSET(리슨, &readSet))
+    retval = select(0, &readSet, nullptr, nullptr, NULL);
+    if (retval == SOCKET_ERROR)
     {
-        acceptProc();
+
     }
 
-    for (PlayerList - ) // ret값이랑 recv 된 수랑 비교해서 반복 횟수 줄이기 가능
+    // 리슨 소켓에 들어온 클라이언트를 유저로 승격
+    /*myList<PLAYER>::iterator iter;
+    for (int i = 0; i < players.size(); i++)
     {
-        if (FP_ISSET(PLAYER->socket, &readSet))
+        FD_SET(players[], &readSet);
+    }*/
+   
+    if (FD_ISSET(listen_sock, &readSet))
+    {
+        AcceptProc();
+    }
+
+    myList<PLAYER*>::iterator iter;
+    for (iter = players.begin(); iter != players.end(); iter++) // ret값이랑 recv 된 수랑 비교해서 반복 횟수 줄이기 가능
+    {
+        if (FD_ISSET((*iter)->sock, &readSet))
         {
-            recvProc(Player);
+            if (!RecvProc(*iter))
+                return false;
         }
     }
+
+    return true;
 }
 
-bool acceptProc()
+bool AcceptProc()
 {
-    sock = accept();
-    // Player 생성 세팅 ID 부여
-    // ID 할당 메세지 send
-    sendUnicast(Player, &allocID);
-    // Player 리스트에 추가
-    PlayerList.push();
-    // 접속자에 대한 기존 접속자들 별 생성 메세지 전체 send
-    STAR_CREATE.type = 1;
-    // 기존 유저에게 새로운 접속자에게 별 생성 메세지 send
+    // 메세지 버퍼
+    char buffer[PACKET_SIZE];
 
-
-    // 서버는 unicast, broadcast(UDP 브로드캐스팅x, 유저 전체한테 보내기), 전체 중 일부 빼고 send 유형
-
-}
-
-bool sendUnicast(Player, buffer) // 보낼 대상 버퍼
-{
-
-}
-
-bool sendBroadcast(Player, buffer) // 제외할 대상 버퍼
-{
-
-}
-
-
-bool RecvProc() // -> 플레이어 리스트 순환 중
-{
-    char buffer[16] = { 0 };
-    ret = recv();
-    if (연결처리)
+    // accept()
+    SOCKET client_sock;
+    SOCKADDR_IN clientAddr;
+    int addrLen = sizeof(clientAddr);
+    client_sock = accept(listen_sock, (SOCKADDR*)&clientAddr, &addrLen);
+    if (client_sock == INVALID_SOCKET)
     {
-        disconnect
+        retval_accept = GetLastError();
+        closesocket(client_sock);
+        return false;
+    }
+
+    // Player 생성 세팅 ID 부여
+    PLAYER* newPlayer = new PLAYER;
+    newPlayer->sock = client_sock;
+    InetNtop(AF_INET, &clientAddr.sin_addr, newPlayer->ipAddr, sizeof(newPlayer->ipAddr));
+    newPlayer->port = ntohs(clientAddr.sin_port);
+    newPlayer->id = NULL;
+    newPlayer->xpos = SCREEN_WIDTH / 2;
+    newPlayer->ypos = SCREEN_HEIGHT / 2;
+
+    // ID 할당 메세지 Unicast send
+    buffer[PACKET_SIZE] = { 0 };
+    ID_ALLOC* allocMsg = (ID_ALLOC*)buffer;
+    allocMsg->type = 0;
+    allocMsg->id = NULL;
+    SendUnicast(newPlayer, buffer);
+    
+    // 기존 접속자 별 생성 메세지 Unicast send
+    buffer[PACKET_SIZE] = { 0 };
+    STAR_CREATE* createMsg = (STAR_CREATE*)buffer;
+    myList<PLAYER*>::iterator iter;
+    for (iter = players.begin(); iter != players.end(); iter++)
+    {
+        createMsg->type = 1;
+        createMsg->id = (*iter)->id;
+        createMsg->xpos = (*iter)->xpos;
+        createMsg->ypos = (*iter)->ypos;
+        SendUnicast(newPlayer, buffer);
+    }
+
+    // 모두에게 새로운 접속자 별 생성 메세지 Broadcast send
+    buffer[PACKET_SIZE] = { 0 };
+    STAR_CREATE* createMsg = (STAR_CREATE*)buffer;
+    createMsg->type = 1;
+    createMsg->id = newPlayer->id;
+    createMsg->xpos = newPlayer->xpos;
+    createMsg->ypos = newPlayer->ypos;
+    SendBroadcast(nullptr, buffer);
+
+    // Player 리스트에 추가
+    players.push_back(newPlayer);
+}
+
+bool SendUnicast(PLAYER* p, char* buffer)
+{
+    retval = send(p->sock, buffer, PACKET_SIZE, 0);
+    if (retval == SOCKET_ERROR)
+    {
+        retval_send = GetLastError();
+        return false;
+    }
+    return true;
+}
+
+bool SendBroadcast(PLAYER* p, char* buffer)
+{
+    myList<PLAYER*>::iterator iter;
+    for (iter = players.begin(); iter != players.end(); iter++)
+    {
+        if (p != *iter)
+        {
+            retval = send((*iter)->sock, buffer, PACKET_SIZE, 0);
+            if (retval == SOCKET_ERROR)
+            {
+                retval_send = GetLastError();
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+
+bool RecvProc(PLAYER* p) // -> 플레이어 리스트 순환 중
+{
+    char buffer[PACKET_SIZE] = { 0 };
+    retval = recv(p->sock, buffer, PACKET_SIZE, 0);
+    if (retval == SOCKET_ERROR)
+    {
+        retval_recv = GetLastError();
+        return false;
+    }
+    if (retval == 0)
+    {
+        if (!Disconnect(p))
+            return false;
     }
     
-    int type = *(int*)buffer;
-    switch (static_cast<MSG_TYPE>(type))
+    STAR_MOVE* moveMsg = (STAR_MOVE*)buffer;
+
+    if (moveMsg->type != (int)MSG_TYPE::STAR_MOVE) // 타입이 올바르지 않을 때
     {
-        case MSG_TYPE::ID_ALLOC:
-            break;
-        case MSG_TYPE::STAR_CREATE:
-            break;
-        case MSG_TYPE::STAR_DELETE:
-            break;
-        case MSG_TYPE::STAR_MOVE:
-            break;
-        default:
-            break;
+        return false;
     }
+
+    myList<PLAYER*>::iterator iter;
+    for (iter = players.begin(); iter != players.end(); iter++)
+    {
+        if ((*iter)->id == moveMsg->id)
+        {
+            (*iter)->xpos = moveMsg->xpos;
+            (*iter)->ypos = moveMsg->ypos;
+        }
+    }
+
+    return true;
 }
 
-bool Disconnect()
+bool Disconnect(PLAYER* p)
 {
-    // 플레이어 리스트에서 해당 플레이어 제거 -> 문제: RecvProc에서 리스트 이터레이터 순환 중 -> 댕글링 포인터 발생
-    // 여기서 제거를 안해야 하는 거임 -> 지연 삭제
-    해당 플레이어.isAlive = false; // 후 나중에 한번에 삭제
-    // 해당 플레이어 별 삭제 메세지 SendBroadcast -> 이 함수 안에서도 Disconnect가 일어날 수 있음 -> 재귀 발생
+    // 메세지 버퍼
+    char buffer[PACKET_SIZE] = { 0 };
 
-    // 
+    // 플레이어 리스트에서 해당 플레이어 제거 -> 문제: RecvProc에서 리스트 이터레이터 순환 중 -> 댕글링 포인터 발생
+    // 여기서 제거를 안하고 나중에 한번에 삭제 -> 지연 삭제
+    p->isAlive = false;
+
+    // 해당 플레이어 별 삭제 메세지 SendBroadcast -> 이 함수 안에서도 Disconnect가 일어날 수 있음 -> 재귀 발생
+    STAR_DELETE* deleteMsg = (STAR_DELETE*)buffer;
+    deleteMsg->type = 2;
+    deleteMsg->id = p->id;
+    if (!SendBroadcast(p, buffer))
+        return false;
+
+    return true;
+}
+
+bool MoveStar()
+{
+
 }
 
 // 릴리즈말고 디버그로 왜? 댕글링 포인터 에러가 안나서 디버그는 할당 해제한 메모리를 0xdd 다 밀어주니까
