@@ -8,7 +8,7 @@
 #pragma comment(lib, "ws2_32")
 
 #define SERVER_PORT 3000
-#define MAX_CLIENTS 20
+#define MAX_CLIENTS 30
 
 struct STAR
 {
@@ -26,7 +26,7 @@ STAR stars[MAX_CLIENTS];
 STAR* myStar;
 
 int playerNum = 0;
-char backBuffer[SCREEN_HEIGHT][SCREEN_WIDTH];
+char backBuffer[SCREEN_HEIGHT][SCREEN_WIDTH + 1];
 
 // 에러 저장 전역 변수
 int retval;
@@ -71,6 +71,9 @@ int main()
 	if (!transBlockingOpt())
 		return -1;
 
+	int oldTick = timeGetTime();
+	bool isSkip = false;
+
 	// 로직
 	while (1)
 	{
@@ -82,7 +85,6 @@ int main()
 		if (!selecting())
 			return -1;
 
-		// 랜더링
 		clear();
 		for (int i = 0; i < MAX_CLIENTS; i++)
 		{
@@ -200,7 +202,7 @@ bool keyInput()
 	if (GetAsyncKeyState(VK_RIGHT) & 0x8001)
 	{
 		nextX = myStar->xpos + 1;
-		if (nextX >= 0 && nextX < SCREEN_WIDTH - 1)
+		if (nextX >= 0 && nextX < SCREEN_WIDTH)
 		{
 			myStar->xpos++;
 			isMove = true;
@@ -210,7 +212,7 @@ bool keyInput()
 	if (GetAsyncKeyState(VK_LEFT) & 0x8001)
 	{
 		nextX = myStar->xpos - 1;
-		if (nextX >= 0 && nextX < SCREEN_WIDTH - 1)
+		if (nextX >= 0 && nextX < SCREEN_WIDTH)
 		{
 			myStar->xpos--;
 			isMove = true;
@@ -225,13 +227,15 @@ bool keyInput()
 		msg.id = myStar->id;
 		msg.xpos = myStar->xpos;
 		msg.ypos = myStar->ypos;
-
 		retval = send(sock, (const char*)&msg, 16, 0);
 		if (retval == SOCKET_ERROR)
 		{
-			retval_send = GetLastError();
-			closesocket(sock);
-			return false;
+			if (GetLastError() != WSAEWOULDBLOCK)
+			{
+				retval_send = GetLastError();
+				closesocket(sock);
+				return false;
+			}
 		}
 	}
 
@@ -268,87 +272,96 @@ bool selecting()
 	// readset 검사
 	if (FD_ISSET(sock, &readSet) != 0)
 	{
-		retval = recv(sock, buffer, 16, 0);
-		if (retval == SOCKET_ERROR)
+		while (1)
 		{
-			retval_recv = GetLastError();
-			closesocket(sock);
-			return false;
-		}
-		else if (retval != 16) // retval == 0인 경우까지 처리
-		{
-			retval_recv = retval;
-			closesocket(sock);
-			return false;
-		}
-
-		int type = *(int*)buffer;
-		switch (static_cast<MSG_TYPE>(type))
-		{
-		case MSG_TYPE::ID_ALLOC:
-		{
-			ID_ALLOC* idAlloc = (ID_ALLOC*)buffer;
-			if (stars[0].isAlive == false)
+			retval = recv(sock, buffer, 16, 0);
+			if (retval == SOCKET_ERROR)
 			{
-				myStar = &stars[0];
-				myStar->id = idAlloc->id;
-				myStar->isAlive = true;
+				if (GetLastError() == WSAEWOULDBLOCK)
+				{
+					break;
+				}
+				retval_recv = GetLastError();
+				closesocket(sock);
+				return false;
 			}
-			break;
-		}
-		case MSG_TYPE::STAR_CREATE:
-		{
-			STAR_CREATE* starCreate = (STAR_CREATE*)buffer;
-			if (starCreate->id == myStar->id)
+			else if (retval != 16) // retval == 0인 경우까지 처리
 			{
-				myStar->xpos = starCreate->xpos;
-				myStar->ypos = starCreate->ypos;
+				retval_recv = retval;
+				closesocket(sock);
+				return false;
+			}
+
+			int type = *(int*)buffer;
+			switch (static_cast<MSG_TYPE>(type))
+			{
+			case MSG_TYPE::ID_ALLOC:
+			{
+				ID_ALLOC* idAlloc = (ID_ALLOC*)buffer;
+				if (stars[0].isAlive == false)
+				{
+					myStar = &stars[0];
+					myStar->id = idAlloc->id;
+				}
 				break;
 			}
-			for (int i = 1; i < MAX_CLIENTS; i++)
+			case MSG_TYPE::STAR_CREATE:
 			{
-				if (stars[i].isAlive == false)
+				STAR_CREATE* starCreate = (STAR_CREATE*)buffer;
+				if ((myStar != nullptr) && (starCreate->id == myStar->id))
 				{
-					stars[i].id = starCreate->id;
-					stars[i].xpos = starCreate->xpos;
-					stars[i].ypos = starCreate->ypos;
-					stars[i].isAlive = true;
+					myStar->xpos = starCreate->xpos;
+					myStar->ypos = starCreate->ypos;
+					myStar->isAlive = true;
 					break;
 				}
-			}
-			break;
-		}
-		case MSG_TYPE::STAR_DELETE:
-		{
-			STAR_DELETE* starDelete = (STAR_DELETE*)buffer;
-			for (int i = 1; i < MAX_CLIENTS; i++)
-			{
-				if (stars[i].id == starDelete->id)
+				for (int i = 1; i < MAX_CLIENTS; i++)
 				{
-					stars[i].isAlive = false;
-					break;
+					if (stars[i].isAlive == false)
+					{
+						stars[i].id = starCreate->id;
+						stars[i].xpos = starCreate->xpos;
+						stars[i].ypos = starCreate->ypos;
+						stars[i].isAlive = true;
+						break;
+					}
 				}
+				break;
 			}
-			break;
-		}
-		case MSG_TYPE::STAR_MOVE:
-		{
-			STAR_MOVE* starMove = (STAR_MOVE*)buffer;
-			for (int i = 0; i < MAX_CLIENTS; i++)
+			case MSG_TYPE::STAR_DELETE:
 			{
-				if (stars[i].id == starMove->id)
+				STAR_DELETE* starDelete = (STAR_DELETE*)buffer;
+				for (int i = 1; i < MAX_CLIENTS; i++)
 				{
-					stars[i].xpos = starMove->xpos;
-					stars[i].ypos = starMove->ypos;
-					break;
+					if (stars[i].id == starDelete->id)
+					{
+						stars[i].isAlive = false;
+						break;
+					}
 				}
+				break;
 			}
-			break;
-		}
-		default:
-			// 에러처리
-			closesocket(sock);
-			return false;
+			case MSG_TYPE::STAR_MOVE:
+			{
+				STAR_MOVE* starMove = (STAR_MOVE*)buffer;
+				if (starMove->xpos < 0 || starMove->xpos >= SCREEN_WIDTH || starMove->ypos < 0 || starMove->ypos >= SCREEN_HEIGHT)
+					return true;
+				for (int i = 0; i < MAX_CLIENTS; i++)
+				{
+					if (stars[i].id == starMove->id)
+					{
+						stars[i].xpos = starMove->xpos;
+						stars[i].ypos = starMove->ypos;
+						break;
+					}
+				}
+				break;
+			}
+			default:
+				// 에러처리
+				closesocket(sock);
+				return false;
+			}
 		}
 	}
 
@@ -370,7 +383,7 @@ void flip()
 void spriteDraw(int x, int y, char sprite)
 {
 	// 요청받은 위치가 유효하지 않은 좌표인 경우
-	if (x < 0 || y < 0 || x > SCREEN_WIDTH - 1 || y > SCREEN_HEIGHT)
+	if (x < 0 || y < 0 || x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT)
 		return;
 
 	// 유효한 좌표일 경우 sprite 저장
@@ -380,11 +393,11 @@ void spriteDraw(int x, int y, char sprite)
 void clear()
 {
 	// 백 버퍼를 공백으로 채워 비움
-	memset(backBuffer, ' ', SCREEN_HEIGHT * SCREEN_WIDTH);
+	memset(backBuffer, ' ', SCREEN_HEIGHT * (SCREEN_WIDTH + 1));
 
 	// 비운 버퍼의 각 줄 끝에 NULL 삽입
 	for (int yCnt = 0; yCnt < SCREEN_HEIGHT; yCnt++)
 	{
-		backBuffer[yCnt][SCREEN_WIDTH - 1] = '\0';
+		backBuffer[yCnt][SCREEN_WIDTH] = '\0';
 	}
 }
