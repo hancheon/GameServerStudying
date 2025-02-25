@@ -24,7 +24,7 @@ public:
 			return *this;
 		}
 
-		iterator& operator++(int)
+		iterator operator++(int)
 		{
 			iterator temp = *this;
 			_node = _node->_next;
@@ -37,7 +37,7 @@ public:
 			return *this;
 		}
 
-		iterator& operator--(int)
+		iterator operator--(int)
 		{
 			iterator temp = *this;
 			_node = _node->_prev;
@@ -139,11 +139,16 @@ public:
 
 	void clear()
 	{
-		iterator iter = this->begin();
+		Node* temp = _head->_next;
+		_head->_next = _tail;
+		_tail->_prev = _head;
 
-		while (iter != this->end())
+		while (temp != _tail)
 		{
-			delete(iter++);
+			Node* delNode = temp;
+			temp = temp->_next;
+			delete(delNode);
+			_size--;
 		}
 	}
 

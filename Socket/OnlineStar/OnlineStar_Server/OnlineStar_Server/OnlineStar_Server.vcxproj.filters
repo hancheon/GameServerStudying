@@ -18,12 +18,18 @@
     <ClCompile Include="OnlineStar_Server.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Console.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Protocol.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="myList.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Console.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
   </ItemGroup>
