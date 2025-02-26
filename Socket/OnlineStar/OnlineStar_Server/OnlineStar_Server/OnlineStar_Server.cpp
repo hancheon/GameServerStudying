@@ -10,6 +10,7 @@
 
 #define PACKET_SIZE 16
 #define SERVER_PORT 3000
+#define MAX_SIZE 16
 
 // 전역 변수
 SOCKET listen_sock;
@@ -36,17 +37,22 @@ struct PLAYER
     int id;
     int xpos;
     int ypos;
+    char recvQ[MAX_SIZE]; // recvRingBuffer
+    char sendQ[MAX_SIZE]; // sendRingBuffer
 };
 myList<PLAYER*> players;
 myList<PLAYER*> disconnects;
 
 bool Networking();
 void AcceptProc();
-bool RecvProc(PLAYER*);
+void RecvProc(PLAYER*);
 void SendUnicast(PLAYER*, char*);
 void SendBroadcast(PLAYER*, char*);
 void Disconnect(PLAYER*);
 void DeleteUser();
+void enqueuing(const char*, int);
+void dequeuing(char*, int);
+
 void Rendering();
 void flip();
 void spriteDraw(int, int, char);
@@ -131,11 +137,13 @@ int main()
         // 지연 삭제()
         DeleteUser();
 
-        // 랜더링() → 좌표 동기화 확인용(전용 클라로 만드는 경우도 있음) 해도 되고 안해도 되고 → 윈도우로 창 만들어보고 싶다
         Rendering();
 
-        Sleep(30);
+        Sleep(20);
     }
+
+    players.clear();
+    disconnects.clear();
 
     closesocket(listen_sock);
     WSACleanup();
@@ -147,8 +155,9 @@ int main()
 
 bool Networking()
 {
-    FD_SET readSet;
+    FD_SET readSet, writeSet;
     FD_ZERO(&readSet);
+    FD_ZERO(&writeSet);
     FD_SET(listen_sock, &readSet);
 
     // 플레이어 리스트에 있는 유저 검사 대상으로 설정
@@ -156,6 +165,8 @@ bool Networking()
     for (iter = players.begin(); iter != players.end(); iter++)
     {
         FD_SET((*iter)->sock, &readSet);
+        // if (players.SendQ.GetUseSize() > 0)
+        // FD_SET((*iter)->sock, &writeSet);
     }
 
     // 타임아웃: 요청한 기능을 못할 때 최대 대기시간
@@ -163,7 +174,6 @@ bool Networking()
     retval = select(0, &readSet, nullptr, nullptr, NULL); // 무한 대기
     if (retval == SOCKET_ERROR)
     {
-        retval_select = GetLastError();
         return false;
     }
     
@@ -179,6 +189,26 @@ bool Networking()
         if (FD_ISSET((*iter)->sock, &readSet))
         {
             RecvProc(*iter);
+            // char buffer[MAX_SIZE]
+            // ret = recv(링버퍼, MAX_SIZE)
+            // Enqret = (*iter).recvQ.enqueuing(buffer, size);
+            // if (recvQ.GetUseSize() >= 16)
+            // char message[16];
+            // ret = recvQdequeue(Message, 16);
+            // if (ret != 16) -> 앞에서 recvQ.GetUseSize()가 16이상인걸 확인했는데 또 확인할 필요 있을까? -> 그래도 확인해라 믿지마..!
+            // {
+            //      에러처리 (오류 덤프 뜨기)
+            // }
+            // recvQ.GetUseSize()가 16 미만까지 반복
+        }
+
+        if (FD_ISSET((*iter)->sock, &writeSet))
+        {
+            char buffer[MAX_SIZE];
+            // ret = sendQ peek(buffer, MAX_SIZE) -> 이건 할 수 있는 만큼 가져오는 코드
+            // s = send(buffer, ret)
+            // if (s != ret)
+            // sendQ.moveFront(s);
         }
     }
 
@@ -241,17 +271,17 @@ void AcceptProc()
 
 void SendUnicast(PLAYER* p, char* buffer)
 {
+    // retval = SendQEnqueue(msg, size);
+    // if (ret != size / ret = false) 면 어떻게 할지 생각해보기
     retval = send(p->sock, buffer, PACKET_SIZE, 0);
     if (retval == SOCKET_ERROR)
     {
         retval_send = GetLastError();
         Disconnect(p);
-        return;
     }
-    else if (retval == 0)
+    else if (retval == 0) // 해당 유저 종료
     {
         Disconnect(p);
-        return;
     }
 }
 
@@ -269,20 +299,15 @@ void SendBroadcast(PLAYER* p, char* buffer)
                 {
                     retval_send = GetLastError();
                     Disconnect(p);
-                    continue;
                 }
-            }
-            else if (retval != 16)
-            {
-                Disconnect(p);
-                return;
+                continue;
             }
         }
     }
 }
 
 
-bool RecvProc(PLAYER* p) // -> 플레이어 리스트 순환 중
+void RecvProc(PLAYER* p) // -> 플레이어 리스트 순환 중
 {
     char buffer[PACKET_SIZE];
 
@@ -295,17 +320,12 @@ bool RecvProc(PLAYER* p) // -> 플레이어 리스트 순환 중
                 break;
             retval_recv = GetLastError();
             Disconnect(p);
-            return false;
+            break;
         }
         else if (retval != 16) // retval == 0이거나 이상한 길이면 연결 종료
         {
-            if (retval == 0)
-            {
-                Disconnect(p);
-                return true;
-            }
             Disconnect(p);
-            return false;
+            break;
         }
 
         int type = *(int*)buffer;
@@ -335,8 +355,6 @@ bool RecvProc(PLAYER* p) // -> 플레이어 리스트 순환 중
             break;
         }
     }
-
-    return true;
 }
 
 void Disconnect(PLAYER* p)
@@ -366,15 +384,14 @@ void DeleteUser()
 void Rendering()
 {
     clear();
-
+    char clientNum[30] = "Connected User: \0";
     myList<PLAYER*>::iterator iter;
     for (iter = players.begin(); iter != players.end(); ++iter)
     {
         spriteDraw((*iter)->xpos, (*iter)->ypos, '*');
     }
-    moveCursor(0, 0);
-    printf("Connected User: %d", players.size());
-
+    snprintf(&clientNum[(int)strlen(clientNum)], strlen(clientNum), "%d", players.size());
+    memcpy(&backBuffer[0][0], clientNum, strlen(clientNum));
     flip();
 }
 
