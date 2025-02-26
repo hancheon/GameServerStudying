@@ -165,23 +165,30 @@ public:
 	iterator erase(iterator iter)
 	{
 		Node* temp = iter._node;
+		iterator newIter(temp);
+		newIter++;
 		temp->_prev->_next = temp->_next;
 		temp->_next->_prev = temp->_prev;
-		iter++;
 		delete(temp);
-		return iter;
+		_size--;
+		return newIter;
 	}
 
 	void remove(T data)
 	{
 		iterator iter;
 
-		for (iter = this->begin(); iter != this->end();)
+		if (_size > 0)
 		{
-			if (*iter == data)
-				erase(iter);
-			else
-				iter++;
+			for (iter = this->begin(); iter != this->end();)
+			{
+				if (*iter == data)
+				{
+					iter = erase(iter);
+				}
+				else
+					iter++;
+			}
 		}
 	}
 };
