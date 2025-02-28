@@ -24,36 +24,36 @@ std::list<SESSION*> sessions;
 std::list<SESSION*> disconnects;
 
 // 전방 선언
-void ErrorHandling(int); // ErrorCode
-bool InitServerSocket();
-bool Listen();
-bool SelectProc();
-void Rendering();
+void errorHandling(int); // ErrorCode
+bool initServerSocket();
+bool listening();
+bool selecting();
+void rendering();
 
 int main()
 {
     // 서버 리슨 소켓 세팅
-    if (!InitServerSocket())
+    if (!initServerSocket())
         return -1;
 
     // 리슨 및 논블로킹 소켓으로 전환
-    if (!Listen())
+    if (!listening())
         return -1;
 
     // 로직
     while (1)
     {
-        if (!SelectProc())
+        if (!selecting())
             return -1;
 
-        Rendering();
+        rendering();
 
         Sleep(20);
     }
 
 }
 
-bool InitServerSocket()
+bool initServerSocket()
 {
     int retval;
 
@@ -61,7 +61,7 @@ bool InitServerSocket()
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
     {
-        ErrorHandling(GetLastError());
+        errorHandling(GetLastError());
         return false;
     }
 
@@ -69,7 +69,7 @@ bool InitServerSocket()
     listen_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listen_sock == INVALID_SOCKET)
     {
-        ErrorHandling(GetLastError());
+        errorHandling(GetLastError());
         return false;
     }
 
@@ -82,14 +82,14 @@ bool InitServerSocket()
     retval = bind(listen_sock, (SOCKADDR*)&servAddr, sizeof(servAddr));
     if (retval == SOCKET_ERROR)
     {
-        ErrorHandling(GetLastError());
+        errorHandling(GetLastError());
         return false;
     }
 
     return true;
 }
 
-bool SelectProc()
+bool selecting()
 {
     FD_SET readSet, writeSet;
     FD_ZERO(&readSet);
@@ -104,13 +104,13 @@ bool SelectProc()
     }
 }
 
-void Rendering()
+void rendering()
 {
     // 윈도우 프로그램
 
 }
 
-bool Listen()
+bool listening()
 {
     int retval;
 
@@ -118,7 +118,7 @@ bool Listen()
     retval = listen(listen_sock, SOMAXCONN);
     if (retval == SOCKET_ERROR)
     {
-        ErrorHandling(GetLastError());
+        errorHandling(GetLastError());
         return false;
     }
 
@@ -127,14 +127,14 @@ bool Listen()
     retval = ioctlsocket(listen_sock, FIONBIO, &blockingOpt);
     if (retval == SOCKET_ERROR)
     {
-        ErrorHandling(GetLastError());
+        errorHandling(GetLastError());
         return false;
     }
 
     return true;
 }
 
-void ErrorHandling(int errorCode)
+void errorHandling(int errorCode)
 {
     char fileName[30] = "ErrorLog_";
     

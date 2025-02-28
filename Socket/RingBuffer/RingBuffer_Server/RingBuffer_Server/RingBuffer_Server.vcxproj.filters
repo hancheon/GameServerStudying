@@ -39,4 +39,9 @@
       <Filter>소스 파일\Console</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="RingBuffer.txt">
+      <Filter>소스 파일</Filter>
+    </Text>
+  </ItemGroup>
 </Project>
