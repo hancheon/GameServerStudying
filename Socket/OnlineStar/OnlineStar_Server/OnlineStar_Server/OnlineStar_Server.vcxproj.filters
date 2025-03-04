@@ -13,13 +13,25 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="소스 파일\myList">
+      <UniqueIdentifier>{8f0d07f1-aab9-4864-b028-a9fe203c215f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\RingBuffer">
+      <UniqueIdentifier>{b1c59b64-407e-4321-b4a6-a4b74e335448}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Console">
+      <UniqueIdentifier>{ee3e5192-4cd6-4e53-8537-6dd0fcf7d1e0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="OnlineStar_Server.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="RingBuffer.cpp">
+      <Filter>소스 파일\RingBuffer</Filter>
+    </ClCompile>
     <ClCompile Include="Console.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\Console</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -27,10 +39,13 @@
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="myList.h">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\myList</Filter>
+    </ClInclude>
+    <ClInclude Include="RingBuffer.h">
+      <Filter>소스 파일\RingBuffer</Filter>
     </ClInclude>
     <ClInclude Include="Console.h">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\Console</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
