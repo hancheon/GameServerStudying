@@ -303,39 +303,46 @@ void RecvProc(PLAYER* p) // -> 플레이어 리스트 순환 중
 		return;
 	}
 
-	char buffer[PACKET_SIZE];
-
-	int enqueueSize;
-	if (p->recvQ.GetFreeSize() < PACKET_SIZE) // 링버퍼에 남은 공간이 메세지 크기보다 작을 때
-	{
-		enqueueSize = p->recvQ.GetFreeSize();
-	}
-	else
-	{
-		enqueueSize = PACKET_SIZE;
-	}
-
-	retval = recv(p->sock, buffer, enqueueSize, 0);
+	// 링버퍼에 가능한 크기만큼 전부 넣는 방식
+	// enqueue() 대신 직접 입력하므로 링버퍼 끝 처리 필요
+	retval = recv(p->sock, p->recvQ.GetRearBufferPtr() + 1, p->recvQ.GetDirectEnqueueSize(), 0); // rear에서 인덱스 끝까지
 	if (retval == SOCKET_ERROR)
 	{
-		if (GetLastError() == WSAEWOULDBLOCK) // 더이상 읽을 데이터x면 복귀
+		if (GetLastError() != WSAEWOULDBLOCK)
+		{
+			retval_recv = GetLastError();
+			Disconnect(p);
 			return;
-		retval_recv = GetLastError();
-		Disconnect(p);
-		return;
+		}
 	}
-	else if (retval != 16) // retval == 0이거나 이상한 길이면 연결 종료
+	else if (retval == 0) // retval == 0이면 연결 종료
 	{
 		Disconnect(p);
 		return;
 	}
+	p->recvQ.MoveRear(retval);
 
-	retval = p->recvQ.Enqueue(buffer, enqueueSize);
-	if (retval);
-
-	while (1)
+	// 인덱스 0부터 삽입
+	retval = recv(p->sock, p->recvQ.GetRearBufferPtr() + 1, p->recvQ.GetDirectEnqueueSize(), 0); // 인덱스 0부터 다시 recv
+	if (retval == SOCKET_ERROR)
 	{
-		if (p->recvQ.GetUsedSize() < PACKET_SIZE)
+		if (GetLastError() != WSAEWOULDBLOCK)
+		{
+			retval_recv = GetLastError();
+			Disconnect(p);
+			return;
+		}
+	}
+	else if (retval == 0) // retval == 0이면 연결 종료
+	{
+		Disconnect(p);
+		return;
+	}
+	p->recvQ.MoveRear(retval);
+
+	while (1) // 링버퍼에서 지역 버퍼로 메세지 복사 후 처리
+	{
+		if (p->recvQ.GetUsedSize() < PACKET_SIZE) // 자리가 부족해서 아직 덜 온 메세지 다음 프레임에 처리
 		{
 			break;
 		}
@@ -346,7 +353,7 @@ void RecvProc(PLAYER* p) // -> 플레이어 리스트 순환 중
 		if (retval != 16)
 		{
 			// 덤프 뜨기
-			return;
+			break;
 		}
 
 		int type = *(int*)message;
@@ -378,6 +385,9 @@ void RecvProc(PLAYER* p) // -> 플레이어 리스트 순환 중
 	}
 }
 
+/// <summary>
+/// 링버퍼의 데이터를 tcp 송신 버퍼로 보내는 기능
+/// </summary>
 void SendProc(PLAYER* p)
 {
 	if (p == nullptr)
@@ -389,20 +399,36 @@ void SendProc(PLAYER* p)
 
 	while (1)
 	{
-		// 메세지 크기보다 적은 데이터가 링버퍼에 있는 경우 -> 아직 덜 저장됨
+		// 메세지 크기보다 적은 데이터가 링버퍼에 있는 경우 -> 송신 링버퍼 가득차서 짤린 메세지 -> 다음 프레임에 처리
 		if (p->sendQ.GetUsedSize() < PACKET_SIZE)
 		{
-			return;
+			break;
 		}
 
-		p->sendQ.Dequeue(buffer, PACKET_SIZE);
-
-		retval = send(p->sock, buffer, PACKET_SIZE, 0);
+		retval = send(p->sock, p->sendQ.GetFrontBufferPtr(), p->sendQ.GetDirectDequeueSize(), 0);
 		if (retval == SOCKET_ERROR)
 		{
-			// 에러처리
+			if (GetLastError() != WSAEWOULDBLOCK)
+			{
+				retval_recv = GetLastError();
+				Disconnect(p);
+				return;
+			}
 		}
+		p->sendQ.MoveFront(retval);
 
+		// directSize 후 남은 거 send
+		retval = send(p->sock, p->sendQ.GetFrontBufferPtr(), p->sendQ.GetDirectDequeueSize(), 0);
+		if (retval == SOCKET_ERROR)
+		{
+			if (GetLastError() != WSAEWOULDBLOCK)
+			{
+				retval_recv = GetLastError();
+				Disconnect(p);
+				return;
+			}
+		}
+		p->sendQ.MoveFront(retval);
 	}
 	// ret = sendQ peek(buffer, MAX_SIZE) -> 이건 할 수 있는 만큼 가져오는 코드
 	// s = send(buffer, ret)
