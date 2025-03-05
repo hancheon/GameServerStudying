@@ -16,11 +16,6 @@ RingBuffer::~RingBuffer()
 	delete[] m_buffer;
 }
 
-void RingBuffer::Resize(int size)
-{
-
-}
-
 int RingBuffer::GetBufferSize()
 {
 	return m_bufferSize;

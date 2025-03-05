@@ -9,9 +9,6 @@ public:
 	RingBuffer(int bufferSize);
 	~RingBuffer();
 
-	// 버퍼 크기 변경
-	void Resize(int size);
-
 	// 버퍼 크기 얻기
 	int GetBufferSize();
 
@@ -38,7 +35,6 @@ public:
 	int GetDirectEnqueueSize();
 	int GetDirectDequeueSize();
 
-private:
 	// 실제 Front/Rear 위치 이동
 	int MoveFront(int size);
 	int MoveRear(int size);
