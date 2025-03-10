@@ -1,7 +1,7 @@
 #pragma once
+#include <Windows.h>
 #pragma pack(push, 1)
 
-#include <Windows.h>
 /*---------------------------------------------------------------
 
 패킷데이터 정의.
@@ -19,7 +19,6 @@
 
 #ifndef __PACKET_DEFINE__
 #define __PACKET_DEFINE__
-
 
 //---------------------------------------------------------------
 // 패킷헤더.
@@ -56,8 +55,8 @@ struct HEADER
 //---------------------------------------------------------------
 struct SC_CREATE_MY_CHARACTER
 {
-	int id;
-	char direction;
+	DWORD ID;
+	BYTE direction;
 	short xPos;
 	short yPos;
 	char hp;
@@ -81,8 +80,8 @@ struct SC_CREATE_MY_CHARACTER
 //---------------------------------------------------------------
 struct SC_CREATE_OTHER_CHARACTER
 {
-	int id;
-	char direction;
+	DWORD ID;
+	BYTE direction;
 	short xPos;
 	short yPos;
 	char hp;
@@ -100,7 +99,7 @@ struct SC_CREATE_OTHER_CHARACTER
 //---------------------------------------------------------------
 struct SC_DELETE_CHARACTER
 {
-	int id;
+	DWORD ID;
 };
 
 
@@ -130,7 +129,7 @@ struct SC_DELETE_CHARACTER
 
 struct CS_MOVE_START
 {
-	char direction;
+	BYTE direction;
 	short xPos;
 	short yPos;
 };
@@ -154,8 +153,8 @@ struct CS_MOVE_START
 //---------------------------------------------------------------
 struct SC_MOVE_START
 {
-	int id;
-	char direction;
+	DWORD ID;
+	BYTE direction;
 	short xPos;
 	short yPos;
 };
@@ -176,7 +175,7 @@ struct SC_MOVE_START
 //---------------------------------------------------------------
 struct CS_MOVE_STOP
 {
-	char direction;
+	BYTE direction;
 	short xPos;
 	short yPos;
 };
@@ -196,8 +195,8 @@ struct CS_MOVE_STOP
 //---------------------------------------------------------------
 struct SC_MOVE_STOP
 {
-	int id;
-	char direction;
+	DWORD ID;
+	BYTE direction;
 	short xPos;
 	short yPos;
 };
@@ -217,9 +216,9 @@ struct SC_MOVE_STOP
 //	2	-	Y	
 //
 //---------------------------------------------------------------
-struct CS_ATTACK_1
+struct CS_ATTACK1
 {
-	char direction;
+	BYTE direction;
 	short xPos;
 	short yPos;
 };
@@ -238,10 +237,10 @@ struct CS_ATTACK_1
 //	2	-	Y
 //
 //---------------------------------------------------------------
-struct SC_ATTACK_1
+struct SC_ATTACK1
 {
-	int id;
-	char direction;
+	DWORD ID;
+	BYTE direction;
 	short xPos;
 	short yPos;
 };
@@ -261,9 +260,9 @@ struct SC_ATTACK_1
 //	2	-	Y
 //
 //---------------------------------------------------------------
-struct CS_ATTACK_2
+struct CS_ATTACK2
 {
-	char direction;
+	BYTE direction;
 	short xPos;
 	short yPos;
 };
@@ -282,10 +281,10 @@ struct CS_ATTACK_2
 //	2	-	Y
 //
 //---------------------------------------------------------------
-struct SC_ATTACK_2
+struct SC_ATTACK2
 {
-	int id;
-	char direction;
+	DWORD ID;
+	BYTE direction;
 	short xPos;
 	short yPos;
 };
@@ -305,9 +304,9 @@ struct SC_ATTACK_2
 //	2	-	Y
 //
 //---------------------------------------------------------------
-struct CS_ATTACK_3
+struct CS_ATTACK3
 {
-	char direction;
+	BYTE direction;
 	short xPos;
 	short yPos;
 };
@@ -326,10 +325,10 @@ struct CS_ATTACK_3
 //	2	-	Y
 //
 //---------------------------------------------------------------
-struct SC_ATTACK_3
+struct SC_ATTACK3
 {
-	int id;
-	char direction;
+	DWORD ID;
+	BYTE direction;
 	short xPos;
 	short yPos;
 };
@@ -348,8 +347,8 @@ struct SC_ATTACK_3
 //---------------------------------------------------------------
 struct SC_DAMAGE
 {
-	int attackID;
-	int damageID;
+	DWORD attackID;
+	DWORD damageID;
 	char damage;
 };
 
@@ -387,3 +386,5 @@ struct SC_DAMAGE
 
 
 #endif
+
+#pragma pack(pop)

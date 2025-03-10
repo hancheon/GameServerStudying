@@ -22,8 +22,17 @@
     <Filter Include="소스 파일\Contents">
       <UniqueIdentifier>{c21c4f9e-5e7b-432c-8aa4-e1e7aaa6760d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\Contents\Player">
-      <UniqueIdentifier>{64a695da-653d-431c-bf61-edb515be9644}</UniqueIdentifier>
+    <Filter Include="소스 파일\Packet">
+      <UniqueIdentifier>{5309bab2-a20f-417d-8ef7-8b48923d9ac8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Session">
+      <UniqueIdentifier>{d45c5019-f5f4-4977-afdc-572a9b569cac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Protocol">
+      <UniqueIdentifier>{98d9a544-812c-4f6d-a049-2d1dcdd059c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\Network">
+      <UniqueIdentifier>{89c11ddb-368d-490b-879e-384a783c5e14}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -36,14 +45,17 @@
     <ClCompile Include="Contents.cpp">
       <Filter>소스 파일\Contents</Filter>
     </ClCompile>
-    <ClCompile Include="Player.cpp">
-      <Filter>소스 파일\Contents\Player</Filter>
+    <ClCompile Include="Packet.cpp">
+      <Filter>소스 파일\Packet</Filter>
+    </ClCompile>
+    <ClCompile Include="Network.cpp">
+      <Filter>소스 파일\Network</Filter>
+    </ClCompile>
+    <ClCompile Include="Session.cpp">
+      <Filter>소스 파일\Session</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Protocol.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
     <ClInclude Include="myList.h">
       <Filter>소스 파일\myList</Filter>
     </ClInclude>
@@ -53,8 +65,17 @@
     <ClInclude Include="Contents.h">
       <Filter>소스 파일\Contents</Filter>
     </ClInclude>
-    <ClInclude Include="Player.h">
-      <Filter>소스 파일\Contents\Player</Filter>
+    <ClInclude Include="Packet.h">
+      <Filter>소스 파일\Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="Session.h">
+      <Filter>소스 파일\Session</Filter>
+    </ClInclude>
+    <ClInclude Include="Protocol.h">
+      <Filter>소스 파일\Protocol</Filter>
+    </ClInclude>
+    <ClInclude Include="Network.h">
+      <Filter>소스 파일\Network</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
