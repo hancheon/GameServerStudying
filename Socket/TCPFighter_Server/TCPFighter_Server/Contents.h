@@ -7,4 +7,4 @@
 #define dfRANGE_MOVE_RIGHT	630
 #define dfRANGE_MOVE_BOTTOM	470
 
-bool update();
+void update();

@@ -132,7 +132,6 @@
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="Packet.cpp" />
     <ClCompile Include="RingBuffer.cpp" />
-    <ClCompile Include="Session.cpp" />
     <ClCompile Include="TCPFighter_Server.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -59,7 +59,7 @@ struct SC_CREATE_MY_CHARACTER
 	BYTE direction;
 	short xPos;
 	short yPos;
-	char hp;
+	char HP;
 };
 
 
@@ -84,7 +84,7 @@ struct SC_CREATE_OTHER_CHARACTER
 	BYTE direction;
 	short xPos;
 	short yPos;
-	char hp;
+	char HP;
 };
 
 
@@ -347,9 +347,9 @@ struct SC_ATTACK3
 //---------------------------------------------------------------
 struct SC_DAMAGE
 {
-	DWORD attackID;
-	DWORD damageID;
-	char damage;
+	DWORD attackerID;
+	DWORD damagedID;
+	char remainHP;
 };
 
 

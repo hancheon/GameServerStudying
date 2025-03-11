@@ -13,4 +13,4 @@ bool writeProc(SESSION*);
 bool unicast(SESSION*, HEADER*, char*);
 bool broadcast(SESSION*, HEADER*, char*);
 bool disconnect(SESSION*);
-bool deleteUser(SESSION*);
+void deleteUser();

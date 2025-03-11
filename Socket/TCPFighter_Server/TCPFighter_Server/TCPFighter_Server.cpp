@@ -23,12 +23,14 @@ int wmain()
     timeBeginPeriod(1);
     setlocale(LC_ALL, "Korean");
 
+    printf("# InitServer...");
     // 서버 세팅
     if (!initServer())
     {
         closesocket(listen_sock);
         return -1;
     }
+    printf("OK\n");
 
     oldTick = timeGetTime();
     // 서버 로직
@@ -36,9 +38,10 @@ int wmain()
     {
         if (!networkProc())
             break;
-        
-        if (!update())
-            break;
+
+        deleteUser();
+
+        update();
     }
 
     // 서버 종료
