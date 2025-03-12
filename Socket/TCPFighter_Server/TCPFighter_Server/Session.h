@@ -10,8 +10,8 @@ struct SESSION
     RingBuffer readQ;
     RingBuffer writeQ;
 
-    DWORD action; // 캐릭터 상태 (이동)
-    BYTE direction; // 캐릭터 시야 방향
+    BYTE action; // 캐릭터 상태 (이동)
+    BYTE direction; // 캐릭터 시야 방향 LL | RR
 
     short xPos;
     short yPos;

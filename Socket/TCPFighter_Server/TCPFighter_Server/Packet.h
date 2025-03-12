@@ -2,7 +2,7 @@
 #include "Protocol.h"
 
 #define dfERROR_RANGE 50
-#define DAMAGE 3
+#define DAMAGE 10
 #define dfATTACK1_RANGE_X		80
 #define dfATTACK2_RANGE_X		90
 #define dfATTACK3_RANGE_X		100

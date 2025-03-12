@@ -15,7 +15,10 @@ extern myList<SESSION*> disconnects;
 bool packetProc(SESSION* p, BYTE packet_type, char* payload)
 {
     if (p == nullptr || payload == nullptr)
+    {
+        printf("유효하지 않은 유저 또는 페이로드 주소 이상\n");
         return false;
+    }
 
     switch (packet_type)
     {
@@ -43,6 +46,7 @@ bool packetProc_MOVE_START(SESSION* p, char* payload)
     if (abs(p->xPos - msg->xPos) > dfERROR_RANGE || abs(p->yPos - msg->yPos) > dfERROR_RANGE)
     {
         printf("Error: MOVE_START 좌표 허용 오차 초과\n");
+        printf("요청 xpos: %d ypos: %d | 서버 xpos: %d ypos: %d\n", msg->xPos, msg->yPos, p->xPos, p->yPos);
         disconnect(p);
         return false;
     }
@@ -66,7 +70,7 @@ bool packetProc_MOVE_START(SESSION* p, char* payload)
 
     HEADER header;
     SC_MOVE_START newPayload;
-    createPacket_MOVE_START(&header, (char*)&newPayload, p->sessionID, p->direction, p->xPos, p->yPos);
+    createPacket_MOVE_START(&header, (char*)&newPayload, p->sessionID, p->action, p->xPos, p->yPos);
     broadcast(p, &header, (char*)&newPayload);
 
     printf("# [MOVE_START] SessionID: %d | direction: %d | xPos: %d | yPos: %d\n", p->sessionID, p->action, p->xPos, p->yPos);
@@ -80,6 +84,7 @@ bool packetProc_MOVE_STOP(SESSION* p, char* payload)
     if (abs(p->xPos - msg->xPos) > dfERROR_RANGE || abs(p->yPos - msg->yPos) > dfERROR_RANGE)
     {
         printf("Error: MOVE_STOP 좌표 허용 오차 초과\n");
+        printf("요청 xpos: %d ypos: %d | 서버 xpos: %d ypos: %d\n", msg->xPos, msg->yPos, p->xPos, p->yPos);
         disconnect(p);
         return false;
     }
@@ -106,7 +111,7 @@ bool packetProc_ATTACK1(SESSION* p, char* payload)
     HEADER header;
     SC_ATTACK1 newPayload;
     createPacket_ATTACK1(&header, (char*)&newPayload, p->sessionID, p->direction, p->xPos, p->yPos);
-    broadcast(nullptr, &header, (char*)&newPayload);
+    broadcast(p, &header, (char*)&newPayload);
     printf("# [ATTACK1] AttackerID: %d | Damage %d\n", p->sessionID, DAMAGE);
 
     // 공격 판정 후 결과 통보
@@ -115,7 +120,7 @@ bool packetProc_ATTACK1(SESSION* p, char* payload)
     {
         if ((*iter) != p)
         {
-            if (abs((*iter)->xPos - msg->xPos) < dfPACKET_CS_ATTACK1 && abs((*iter)->yPos - msg->yPos) < dfPACKET_CS_ATTACK1)
+            if (abs((*iter)->xPos - msg->xPos) < dfATTACK1_RANGE_X && abs((*iter)->yPos - msg->yPos) < dfATTACK1_RANGE_Y)
             {
                 (*iter)->HP -= DAMAGE;
                 
@@ -147,14 +152,15 @@ bool packetProc_ATTACK2(SESSION* p, char* payload)
     {
         if ((*iter) != p)
         {
-            if (abs((*iter)->xPos - msg->xPos) < dfPACKET_CS_ATTACK2 && abs((*iter)->yPos - msg->yPos) < dfPACKET_CS_ATTACK2)
+            if (abs((*iter)->xPos - msg->xPos) < dfATTACK2_RANGE_X && abs((*iter)->yPos - msg->yPos) < dfATTACK2_RANGE_Y)
             {
                 (*iter)->HP -= DAMAGE;
 
                 HEADER header;
                 SC_DAMAGE newPayload;
                 createPacket_DAMAGE(&header, (char*)&newPayload, p->sessionID, (*iter)->sessionID, (*iter)->HP);
-                printf("# [ATTACK2] AttackerID:  %d | DemagedID: %d | HP: %d\n", p->sessionID, (*iter)->sessionID, (*iter)->HP);
+                broadcast(nullptr, &header, (char*)&newPayload);
+                printf("# [ATTACK2] DemagedID:  %d | HP: %d\n", (*iter)->sessionID, (*iter)->HP);
             }
         }
     }
@@ -179,13 +185,14 @@ bool packetProc_ATTACK3(SESSION* p, char* payload)
     {
         if ((*iter) != p)
         {
-            if (abs((*iter)->xPos - msg->xPos) < dfPACKET_CS_ATTACK3 && abs((*iter)->yPos - msg->yPos) < dfPACKET_CS_ATTACK3)
+            if (abs((*iter)->xPos - msg->xPos) < dfATTACK3_RANGE_X && abs((*iter)->yPos - msg->yPos) < dfATTACK3_RANGE_Y)
             {
                 (*iter)->HP -= DAMAGE;
 
                 HEADER header;
                 SC_DAMAGE newPayload;
                 createPacket_DAMAGE(&header, (char*)&newPayload, p->sessionID, (*iter)->sessionID, (*iter)->HP);
+                broadcast(nullptr, &header, (char*)&newPayload);
                 printf("# [ATTACK3] DemagedID:  %d | HP: %d\n", (*iter)->sessionID, (*iter)->HP);
             }
         }
@@ -225,7 +232,7 @@ void createPacket_CREATE_OTHER_CHARACTER(HEADER* header, char* payload, DWORD ID
     msg->HP = HP;
 }
 
-void createPacket_MOVE_START(HEADER* header, char* payload, DWORD ID, BYTE direction, short xPos, short yPos)
+void createPacket_MOVE_START(HEADER* header, char* payload, DWORD ID, BYTE action, short xPos, short yPos)
 {
     header->p_code = PACKET_CODE;
     header->p_size = sizeof(SC_MOVE_START);
@@ -233,7 +240,7 @@ void createPacket_MOVE_START(HEADER* header, char* payload, DWORD ID, BYTE direc
 
     SC_MOVE_START* msg = (SC_MOVE_START*)payload;
     msg->ID = ID;
-    msg->direction = direction;
+    msg->direction = action;
     msg->xPos = xPos;
     msg->yPos = yPos;
 }

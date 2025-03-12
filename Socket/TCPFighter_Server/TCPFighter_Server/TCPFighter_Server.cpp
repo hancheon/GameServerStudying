@@ -39,8 +39,6 @@ int wmain()
         if (!networkProc())
             break;
 
-        deleteUser();
-
         update();
     }
 

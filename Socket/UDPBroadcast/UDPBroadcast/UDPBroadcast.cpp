@@ -65,10 +65,15 @@ int wmain()
 
 	timeval time;
 	time.tv_sec = 0;
-	time.tv_usec = 200;
+	time.tv_usec = 200000;
+
+	FD_SET rSet;
 
 	for (int i = 0; i <= 100; i++)
 	{
+		FD_ZERO(&rSet);
+		FD_SET(sock, &rSet);
+
 		addr.sin_port = htons(10000 + i);
 
 		retval = sendto(sock, packet, PROTOCOL_PACKETSIZE, 0, (SOCKADDR*)&addr, sizeof(addr));
@@ -79,22 +84,30 @@ int wmain()
 		}
 		printf("%d 바이트 전송\n", retval);
 
-		FD_SET rSet;
-		FD_ZERO(&rSet);
-		FD_SET(sock, &rSet);
-		select(0, &rSet, nullptr, nullptr, &time);
-
-		retval = recvfrom(sock, (char*)roomInfo, BUF_SIZE, 0, (SOCKADDR*)&roomAddr, &addrLen);
+		retval = select(0, &rSet, nullptr, nullptr, &time);
 		if (retval == SOCKET_ERROR)
 		{
-			printf("%d\n", GetLastError());
-			return -1;
+			if (GetLastError() != WSAEWOULDBLOCK)
+			{
+				printf("%d\n", GetLastError());
+				return -1;
+			}
 		}
 
-		roomInfo[retval / 2] = L'\0';
+		if (FD_ISSET(sock, &rSet))
+		{
+			retval = recvfrom(sock, (char*)roomInfo, BUF_SIZE, 0, (SOCKADDR*)&roomAddr, &addrLen);
+			if (retval == SOCKET_ERROR)
+			{
+				printf("%d\n", GetLastError());
+				return -1;
+			}
 
-		InetNtop(AF_INET, &roomAddr.sin_addr, ip, 16);
-		wprintf(L"[%s:%u] %s\n", ip, ntohs(roomAddr.sin_port), roomInfo);
+			roomInfo[retval / 2] = L'\0';
+
+			InetNtop(AF_INET, &roomAddr.sin_addr, ip, 16);
+			wprintf(L"[%s:%u] %s\n", ip, ntohs(roomAddr.sin_port), roomInfo);
+		}
 	}
 
 }

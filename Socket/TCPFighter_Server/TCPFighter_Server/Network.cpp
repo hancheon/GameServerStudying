@@ -71,6 +71,8 @@ bool networkProc()
         }
     }
 
+    deleteUser();
+
     return true;
 }
 
@@ -104,7 +106,6 @@ bool acceptProc()
     HEADER header;
     SC_CREATE_MY_CHARACTER sc_my_character;
     createPacket_CREATE_MY_CHARACTER(&header, (char*)&sc_my_character, newPlayer->sessionID, newPlayer->direction, newPlayer->xPos, newPlayer->yPos, newPlayer->HP);
-
     if (!unicast(newPlayer, &header, (char*)&sc_my_character))
         return false;
 
@@ -118,6 +119,7 @@ bool acceptProc()
     myList<SESSION*>::iterator iter;
     for (iter = users.begin(); iter != users.end(); iter++)
     {
+        createPacket_CREATE_OTHER_CHARACTER(&header, (char*)&sc_other_character, (*iter)->sessionID, (*iter)->direction, (*iter)->xPos, (*iter)->yPos, (*iter)->HP);
         printf("[sc_create_other] id: %lu, direction: %d, xPos: %d, yPos: %d, HP: %d\n", (*iter)->sessionID, (*iter)->direction, (*iter)->xPos, (*iter)->yPos, (*iter)->HP);
         if (!unicast(newPlayer, &header, (char*)&sc_other_character))
             return false;
