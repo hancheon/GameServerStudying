@@ -45,7 +45,6 @@ int RingBuffer::Enqueue(const char* data, int requestSize)
 		memcpy(m_bufferPtr, data + splite1, splite2);
 	}
 
-	m_usedSize += size;
 	MoveRear(size);
 
 	return size;
@@ -70,7 +69,6 @@ int RingBuffer::Dequeue(char* buffer, int requestSize)
 		memcpy(buffer + splite1, m_bufferPtr, splite2);
 	}
 
-	m_usedSize -= requestSize;
 	MoveFront(requestSize);
 
 	return requestSize;
@@ -78,7 +76,6 @@ int RingBuffer::Dequeue(char* buffer, int requestSize)
 
 int RingBuffer::Peek(char* buffer, int requestSize)
 {
-	// 일단은 요청받은 크기만큼 데이터가 존재하지 않을 때는 데이터 추출x
 	if (buffer == nullptr || requestSize <= 0 || m_usedSize == 0 || m_usedSize < requestSize)
 		return 0;
 
@@ -187,6 +184,8 @@ int RingBuffer::MoveRear(int size)
 		m_rear = size - GetDirectEnqueueSize() - 1;
 	}
 
+	m_usedSize += size;
+
 	return size;
 }
 
@@ -203,6 +202,8 @@ int RingBuffer::MoveFront(int size)
 	{
 		m_front = size - GetDirectDequeueSize() - 1;
 	}
+
+	m_usedSize -= size;
 
 	return size;
 }
