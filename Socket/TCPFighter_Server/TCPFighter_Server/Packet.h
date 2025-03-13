@@ -13,12 +13,12 @@
 #define NOT_MOVE 111
 
 // recv한 패킷 처리 함수
-bool packetProc(SESSION*, BYTE, char*);
-bool packetProc_MOVE_START(SESSION*, char*);
-bool packetProc_MOVE_STOP(SESSION*, char*);
-bool packetProc_ATTACK1(SESSION*, char*);
-bool packetProc_ATTACK2(SESSION*, char*);
-bool packetProc_ATTACK3(SESSION*, char*);
+bool packetProc(SESSION*, BYTE, const char*);
+bool packetProc_MOVE_START(SESSION*, const char*);
+bool packetProc_MOVE_STOP(SESSION*, const char*);
+bool packetProc_ATTACK1(SESSION*, const char*);
+bool packetProc_ATTACK2(SESSION*, const char*);
+bool packetProc_ATTACK3(SESSION*, const char*);
 
 // 패킷 생성 함수
 void createPacket_CREATE_MY_CHARACTER(HEADER*, char*, DWORD, BYTE, short, short, char);

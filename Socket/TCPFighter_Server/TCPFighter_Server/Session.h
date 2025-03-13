@@ -3,6 +3,8 @@
 #include <Windows.h>
 #include "RingBuffer.h"
 
+#define MAX_HP 100
+
 struct SESSION
 {
     SOCKET sock;

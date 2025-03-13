@@ -7,9 +7,10 @@
 #include "Contents.h"
 
 extern SOCKET listen_sock;
-int uniqueID = 0;
+DWORD uniqueID = 0;
 myList<SESSION*> users;
 myList<SESSION*> disconnects;
+int sum = 0;
 
 bool networkProc()
 {
@@ -21,23 +22,48 @@ bool networkProc()
     FD_ZERO(&rSet);
     FD_ZERO(&wSet);
 
-    // set 설정
+    // read셋에 리슨 소켓 등록
     FD_SET(listen_sock, &rSet);
 
     myList<SESSION*>::iterator iter;
     for (iter = users.begin(); iter != users.end(); iter++)
     {
-        FD_SET((*iter)->sock, &rSet);
-        if ((*iter)->writeQ.GetUsedSize() > 0)
+        FD_SET((*iter)->sock, &rSet); // 언제 올지 모르니 모두 등록
+        if ((*iter)->writeQ.GetUsedSize() > 0) // 쓸 게 있는 소켓만 등록
             FD_SET((*iter)->sock, &wSet);
     }
 
-    timeval time;
-    time.tv_sec = 0;
-    time.tv_usec = 0;
+    timeval timeout; // 대기X (어차피 루프 도니까?
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
 
-    retval = select(0, &rSet, &wSet, nullptr, &time);
-    if (retval == SOCKET_ERROR)
+    retval = select(0, &rSet, &wSet, nullptr, &timeout);
+    if (retval > 0)
+    {
+        // accept()
+        if (FD_ISSET(listen_sock, &rSet)) // 리슨 소켓 연결 요청 확인
+        {
+            if (!acceptProc())
+                return false;
+        }
+
+        for (iter = users.begin(); iter != users.end(); iter++)
+        {
+            if (FD_ISSET((*iter)->sock, &rSet)) // readSet 조사
+            {
+                if (!readProc(*iter))
+                    return false;
+            }
+            if (FD_ISSET((*iter)->sock, &wSet)) // writeSet 조사
+            {
+                if (!writeProc(*iter))
+                    return false;
+            }
+        }
+
+        deleteUser();
+    }
+    else if (retval == SOCKET_ERROR)
     {
         if (GetLastError() != WSAEWOULDBLOCK)
         {
@@ -45,33 +71,6 @@ bool networkProc()
             return false;
         }
     }
-    else if (retval == 0)
-    {
-        return true;
-    }
-
-    // accept()
-    if (FD_ISSET(listen_sock, &rSet))
-    {
-        if (!acceptProc())
-            return false;
-    }
-
-    for (iter = users.begin(); iter != users.end(); iter++)
-    {
-        if (FD_ISSET((*iter)->sock, &rSet))
-        {
-            if (!readProc(*iter))
-                return false;
-        }
-        if (FD_ISSET((*iter)->sock, &wSet))
-        {
-            if (!writeProc(*iter))
-                return false;
-        }
-    }
-
-    deleteUser();
 
     return true;
 }
@@ -97,7 +96,7 @@ bool acceptProc()
     newPlayer->sock = client_sock;
     newPlayer->sessionID = uniqueID;
     newPlayer->direction = dfPACKET_MOVE_DIR_RR;
-    newPlayer->action = NOT_MOVE;
+    newPlayer->action = NOT_MOVE; // 캐릭터 행동 상태 확인용 변수
     newPlayer->xPos = (dfRANGE_MOVE_RIGHT - dfRANGE_MOVE_LEFT) / 2;
     newPlayer->yPos = (dfRANGE_MOVE_BOTTOM - dfRANGE_MOVE_TOP) / 2;
     newPlayer->HP = MAX_HP;
@@ -120,16 +119,16 @@ bool acceptProc()
     for (iter = users.begin(); iter != users.end(); iter++)
     {
         createPacket_CREATE_OTHER_CHARACTER(&header, (char*)&sc_other_character, (*iter)->sessionID, (*iter)->direction, (*iter)->xPos, (*iter)->yPos, (*iter)->HP);
-        printf("[sc_create_other] id: %lu, direction: %d, xPos: %d, yPos: %d, HP: %d\n", (*iter)->sessionID, (*iter)->direction, (*iter)->xPos, (*iter)->yPos, (*iter)->HP);
         if (!unicast(newPlayer, &header, (char*)&sc_other_character))
             return false;
     }
 
     // 플레이어 리스트에 추가
     users.push_back(newPlayer);
+
     uniqueID++;
 
-    wprintf(L"# [New User] SessionID: %lu | direction: %d | xPos: %d | yPos: %d | HP: %d\n", newPlayer->sessionID, newPlayer->direction, newPlayer->xPos, newPlayer->yPos, newPlayer->HP);
+    wprintf(L"# [New User] SessionID: %lu | direction: RR | xPos: %d | yPos: %d | HP: %d\n", newPlayer->sessionID, newPlayer->xPos, newPlayer->yPos, newPlayer->HP);
 
     return true;
 }
@@ -143,7 +142,7 @@ bool unicast(SESSION* p, HEADER* header, char* payload)
         printf("Unicast 대상이 존재하지 않음\n");
         return false;
     }
-    else if (p->writeQ.GetFreeSize() == 0) // 처리 불가능한 데이터 존재
+    else if (p->writeQ.GetFreeSize() == 0) // 처리 불가능한 데이터로 링버터 가득참
     {
         printf("Unicast 링버퍼 가득참\n");
         disconnect(p);
@@ -189,14 +188,16 @@ bool broadcast(SESSION* p, HEADER* header, char* payload)
             if (retval != sizeof(HEADER))
             {
                 printf("[Broadcast 헤더 인큐 에러] 요청: %llu 성공: %d\n", sizeof(HEADER), retval);
-                return false;
+                disconnect(*iter);
+                continue;
             }
 
             retval = (*iter)->writeQ.Enqueue(payload, header->p_size);
             if (retval != header->p_size)
             {
                 printf("[Broadcast 페이로드 인큐 에러] 요청: %d 성공: %d\n", header->p_size, retval);
-                return false;
+                disconnect(*iter);
+                continue;
             }
         }
     }
@@ -212,7 +213,7 @@ bool readProc(SESSION* p)
     int retval;
     char buffer[MAX_BUFSIZE];
 
-    if (p->readQ.GetFreeSize() == 0)
+    if (p->readQ.GetFreeSize() == 0) // 처리 불가능한 데이터로 링버퍼 가득 참
     {
         printf("수신 링버퍼 가득참");
         disconnect(p);
@@ -257,19 +258,28 @@ bool readProc(SESSION* p)
             printf("[Read 헤더 Peek 에러] 요청: %llu 성공: %d\n", sizeof(HEADER), retval);
             return false;
         }
+        printf("header.p_code: 0x%x header.p_size: 0x%x, header.p_type: 0x%x\n", header.p_code, header.p_size, header.p_type);
 
         // 헤더 + 페이로드 확인
         if (p->readQ.GetUsedSize() < sizeof(HEADER) + header.p_size)
             break;
 
+        retval = p->readQ.Dequeue((char*)&header, sizeof(HEADER));
         // 헤더만큼 프론트 이동
-        p->readQ.MoveFront(retval);
+        //p->readQ.MoveFront(retval);
 
-        char payload[30];
+        char payload[100];
+        if (header.p_size > 100)
+        {
+            printf("페이로드 사이즈: %d\n", header.p_size);
+            printf("%d\n", sum);
+        }
+        memset(payload, 0, sizeof(payload));
         retval = p->readQ.Dequeue(payload, header.p_size);
+
         if (retval != header.p_size)
         {
-            printf("[Read 페이로드 디큐 에러] 요청: %llu 성공: %d\n", sizeof(HEADER), retval);
+            printf("[Read 페이로드 디큐 에러] 요청: %lu 성공: %d\n", header.p_size, retval);
             return false;
         }
 

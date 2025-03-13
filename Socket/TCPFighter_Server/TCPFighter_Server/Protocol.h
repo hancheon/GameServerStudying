@@ -1,6 +1,6 @@
 #pragma once
 #include <Windows.h>
-#pragma pack(push, 1)
+#pragma pack(1)
 
 /*---------------------------------------------------------------
 
@@ -387,4 +387,4 @@ struct SC_DAMAGE
 
 #endif
 
-#pragma pack(pop)
+#pragma pack()

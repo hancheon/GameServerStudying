@@ -6,18 +6,22 @@
 #include "myList.h"
 #pragma comment(lib, "Winmm")
 
+int frame = 0;
 extern int oldTick;
+extern int fps;
 extern myList<SESSION*> users;
 extern myList<SESSION*> disconnects;
 
 void update()
 {
+    // 50 프레임
     if (timeGetTime() - oldTick < 20)
         return;
 
     myList<SESSION*>::iterator iter;
     for (iter = users.begin(); iter != users.end(); iter++)
     {
+        // 사망 처리
         if ((*iter)->HP <= 0)
         {
             disconnect(*iter);

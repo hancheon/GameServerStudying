@@ -12,7 +12,7 @@ extern myList<SESSION*> disconnects;
 //====================================================================//
 // 받은 패킷 분류 함수
 //====================================================================//
-bool packetProc(SESSION* p, BYTE packet_type, char* payload)
+bool packetProc(SESSION* p, BYTE packet_type, const char* payload)
 {
     if (p == nullptr || payload == nullptr)
     {
@@ -40,7 +40,7 @@ bool packetProc(SESSION* p, BYTE packet_type, char* payload)
 //====================================================================//
 // 분류된 패킷 처리 함수
 //====================================================================//
-bool packetProc_MOVE_START(SESSION* p, char* payload)
+bool packetProc_MOVE_START(SESSION* p, const char* payload)
 {
     CS_MOVE_START* msg = (CS_MOVE_START*)payload;
     if (abs(p->xPos - msg->xPos) > dfERROR_RANGE || abs(p->yPos - msg->yPos) > dfERROR_RANGE)
@@ -78,7 +78,7 @@ bool packetProc_MOVE_START(SESSION* p, char* payload)
     return true;
 }
 
-bool packetProc_MOVE_STOP(SESSION* p, char* payload)
+bool packetProc_MOVE_STOP(SESSION* p, const char* payload)
 {
     CS_MOVE_STOP* msg = (CS_MOVE_STOP*)payload;
     if (abs(p->xPos - msg->xPos) > dfERROR_RANGE || abs(p->yPos - msg->yPos) > dfERROR_RANGE)
@@ -98,20 +98,20 @@ bool packetProc_MOVE_STOP(SESSION* p, char* payload)
     createPacket_MOVE_STOP(&header, (char*)&newPayload, p->sessionID, p->direction, p->xPos, p->yPos);
     broadcast(p, &header, (char*)&newPayload);
     
-    printf("# [MOVE_STOP]  SessionID: %d | direction: %d | xPos: %d | yPos: %d\n", p->sessionID, p->action, p->xPos, p->yPos);
+    printf("# [MOVE_STOP]  SessionID: %d | direction: %d | xPos: %d | yPos: %d\n", p->sessionID, p->direction, p->xPos, p->yPos);
 
     return true;
 }
 
-bool packetProc_ATTACK1(SESSION* p, char* payload)
+bool packetProc_ATTACK1(SESSION* p, const char* payload)
 {
     CS_ATTACK1* msg = (CS_ATTACK1*)payload;
 
     // 공격 모션 지시
     HEADER header;
-    SC_ATTACK1 newPayload;
-    createPacket_ATTACK1(&header, (char*)&newPayload, p->sessionID, p->direction, p->xPos, p->yPos);
-    broadcast(p, &header, (char*)&newPayload);
+    SC_ATTACK1 sc_attack_payload;
+    createPacket_ATTACK1(&header, (char*)&sc_attack_payload, p->sessionID, p->direction, p->xPos, p->yPos);
+    broadcast(p, &header, (char*)&sc_attack_payload);
     printf("# [ATTACK1] AttackerID: %d | Damage %d\n", p->sessionID, DAMAGE);
 
     // 공격 판정 후 결과 통보
@@ -120,7 +120,7 @@ bool packetProc_ATTACK1(SESSION* p, char* payload)
     {
         if ((*iter) != p)
         {
-            if (abs((*iter)->xPos - msg->xPos) < dfATTACK1_RANGE_X && abs((*iter)->yPos - msg->yPos) < dfATTACK1_RANGE_Y)
+            if (abs((*iter)->xPos - msg->xPos) <= dfATTACK1_RANGE_X && abs((*iter)->yPos - msg->yPos) <= dfATTACK1_RANGE_Y)
             {
                 (*iter)->HP -= DAMAGE;
                 
@@ -136,15 +136,15 @@ bool packetProc_ATTACK1(SESSION* p, char* payload)
     return true;
 }
 
-bool packetProc_ATTACK2(SESSION* p, char* payload)
+bool packetProc_ATTACK2(SESSION* p, const char* payload)
 {
     CS_ATTACK2* msg = (CS_ATTACK2*)payload;
 
     // 공격 모션 지시
     HEADER header;
-    SC_ATTACK2 newPayload;
-    createPacket_ATTACK2(&header, (char*)&newPayload, p->sessionID, p->direction, p->xPos, p->yPos);
-    broadcast(p, &header, (char*)&newPayload);
+    SC_ATTACK2 sc_attack_payload;
+    createPacket_ATTACK2(&header, (char*)&sc_attack_payload, p->sessionID, p->direction, p->xPos, p->yPos);
+    broadcast(p, &header, (char*)&sc_attack_payload);
     printf("# [ATTACK2] AttackerID: %d | Damage %d\n", p->sessionID, DAMAGE);
 
     myList<SESSION*>::iterator iter;
@@ -152,7 +152,7 @@ bool packetProc_ATTACK2(SESSION* p, char* payload)
     {
         if ((*iter) != p)
         {
-            if (abs((*iter)->xPos - msg->xPos) < dfATTACK2_RANGE_X && abs((*iter)->yPos - msg->yPos) < dfATTACK2_RANGE_Y)
+            if (abs((*iter)->xPos - msg->xPos) <= dfATTACK2_RANGE_X && abs((*iter)->yPos - msg->yPos) <= dfATTACK2_RANGE_Y)
             {
                 (*iter)->HP -= DAMAGE;
 
@@ -168,15 +168,15 @@ bool packetProc_ATTACK2(SESSION* p, char* payload)
     return true;
 }
 
-bool packetProc_ATTACK3(SESSION* p, char* payload)
+bool packetProc_ATTACK3(SESSION* p, const char* payload)
 {
     CS_ATTACK3* msg = (CS_ATTACK3*)payload;
 
     // 공격 모션 지시
     HEADER header;
-    SC_ATTACK3 newPayload;
-    createPacket_ATTACK3(&header, (char*)&newPayload, p->sessionID, p->direction, p->xPos, p->yPos);
-    broadcast(p, &header, (char*)&newPayload);
+    SC_ATTACK3 sc_attack_payload;
+    createPacket_ATTACK3(&header, (char*)&sc_attack_payload, p->sessionID, p->direction, p->xPos, p->yPos);
+    broadcast(p, &header, (char*)&sc_attack_payload);
     printf("# [ATTACK3] AttackerID: %d | Damage %d\n", p->sessionID, DAMAGE);
     
     // 공격 판정 후 결과 통보
@@ -185,7 +185,7 @@ bool packetProc_ATTACK3(SESSION* p, char* payload)
     {
         if ((*iter) != p)
         {
-            if (abs((*iter)->xPos - msg->xPos) < dfATTACK3_RANGE_X && abs((*iter)->yPos - msg->yPos) < dfATTACK3_RANGE_Y)
+            if (abs((*iter)->xPos - msg->xPos) <= dfATTACK3_RANGE_X && abs((*iter)->yPos - msg->yPos) <= dfATTACK3_RANGE_Y)
             {
                 (*iter)->HP -= DAMAGE;
 
@@ -312,7 +312,7 @@ void createPacket_DAMAGE(HEADER* header, char* payload, DWORD attackerID, DWORD 
 void createPacket_DELETE(HEADER* header, char* payload, DWORD ID)
 {
     header->p_code = PACKET_CODE;
-    header->p_size = sizeof(dfPACKET_SC_DELETE_CHARACTER);
+    header->p_size = sizeof(SC_DELETE_CHARACTER);
     header->p_type = dfPACKET_SC_DELETE_CHARACTER;
 
     SC_DELETE_CHARACTER* msg = (SC_DELETE_CHARACTER*)payload;

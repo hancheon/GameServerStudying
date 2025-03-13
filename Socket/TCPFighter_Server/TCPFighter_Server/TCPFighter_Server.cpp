@@ -14,11 +14,11 @@
 // 전역변수
 SOCKET listen_sock;
 int oldTick;
-
+int fps;
 // 전방선언
 bool initServer();
 
-int wmain()
+int wmain(int argc, wchar_t* argv[])
 {
     timeBeginPeriod(1);
     setlocale(LC_ALL, "Korean");
@@ -27,12 +27,14 @@ int wmain()
     // 서버 세팅
     if (!initServer())
     {
+        printf("failed\n");
         closesocket(listen_sock);
         return -1;
     }
     printf("OK\n");
 
     oldTick = timeGetTime();
+    fps = timeGetTime();
     // 서버 로직
     while (1)
     {
@@ -45,6 +47,7 @@ int wmain()
     // 서버 종료
     closesocket(listen_sock);
     WSACleanup();
+    
     timeEndPeriod(1);
 
     return 0;

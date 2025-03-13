@@ -105,12 +105,12 @@ int RingBuffer::Peek(char* data, int size)
 	int directSize = GetDirectDequeueSize();
 	if (directSize < size) // 링버퍼의 front가 마지막 인덱스를 초과하는 경우
 	{
-		memcpy_s(data, directSize, m_buffer + m_front + 1, directSize);
-		memcpy_s(data + directSize, size - directSize, m_buffer, size - directSize);
+		memcpy(data, m_buffer + m_front + 1, directSize);
+		memcpy(data + directSize, m_buffer, size - directSize);
 	}
 	else
 	{
-		memcpy_s(data, size, m_buffer + m_front + 1, size);
+		memcpy(data, m_buffer + m_front + 1, size);
 	}
 
 	return size;
