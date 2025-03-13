@@ -128,10 +128,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="RingBuffer.cpp" />
+    <ClCompile Include="임시.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="RingBuffer.h" />
+    <ClInclude Include="임시.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
