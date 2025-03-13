@@ -1,4 +1,4 @@
-#include "임시.h"
+#include "RingBuffer.h"
 #include <iostream>
 
 RingBuffer::RingBuffer() : m_bufferSize(DEFAULT_BUFSIZE), m_usedSize(0), m_front(0), m_rear(0)
@@ -16,12 +16,23 @@ RingBuffer::~RingBuffer()
 	delete[] m_bufferPtr;
 }
 
-int RingBuffer::Enqueue(const char* data, int size)
+int RingBuffer::Enqueue(const char* data, int requestSize)
 {
-	if (data == nullptr || size <= 0 || GetFreeSize() < size)
+	if (data == nullptr || requestSize <= 0 || GetFreeSize() == 0)
 		return 0;
 
-	if (GetDirectEnqueueSize() > size)
+	// 링버퍼의 남은 공간보다 많은 데이터 인큐 요청 -> 가능한 크기만큼은 넣어주자
+	int size;
+	if (GetFreeSize() >= requestSize)
+	{
+		size = requestSize;
+	}
+	else
+	{
+		size = GetFreeSize();
+	}
+
+	if (GetDirectEnqueueSize() >= size)
 	{
 		memcpy(GetRearPtr(), data, size);
 	}
@@ -40,14 +51,51 @@ int RingBuffer::Enqueue(const char* data, int size)
 	return size;
 }
 
-int RingBuffer::Dequeue(char* buffer, int size)
+int RingBuffer::Dequeue(char* buffer, int requestSize)
 {
-	return 0;
+	// 일단은 요청받은 크기만큼 데이터가 존재하지 않을 때는 데이터 추출x
+	if (buffer == nullptr || requestSize <= 0 || m_usedSize == 0 || m_usedSize < requestSize)
+		return 0;
+
+	if (GetDirectDequeueSize() >= requestSize)
+	{
+		memcpy(buffer, GetFrontPtr(), requestSize);
+	}
+	else
+	{
+		int splite1 = GetDirectDequeueSize();
+		int splite2 = requestSize - splite1;
+
+		memcpy(buffer, GetFrontPtr(), splite1);
+		memcpy(buffer + splite1, m_bufferPtr, splite2);
+	}
+
+	m_usedSize -= requestSize;
+	MoveFront(requestSize);
+
+	return requestSize;
 }
 
-int RingBuffer::Peek(char* buffer, int size)
+int RingBuffer::Peek(char* buffer, int requestSize)
 {
-	return 0;
+	// 일단은 요청받은 크기만큼 데이터가 존재하지 않을 때는 데이터 추출x
+	if (buffer == nullptr || requestSize <= 0 || m_usedSize == 0 || m_usedSize < requestSize)
+		return 0;
+
+	if (GetDirectDequeueSize() >= requestSize)
+	{
+		memcpy(buffer, GetFrontPtr(), requestSize);
+	}
+	else
+	{
+		int splite1 = GetDirectDequeueSize();
+		int splite2 = requestSize - splite1;
+
+		memcpy(buffer, GetFrontPtr(), splite1);
+		memcpy(buffer + splite1, m_bufferPtr, splite2);
+	}
+
+	return requestSize;
 }
 
 int RingBuffer::DirectEnqueue(char* data, int size)
@@ -127,12 +175,34 @@ char* RingBuffer::GetFrontPtr() const
 
 int RingBuffer::MoveRear(int size)
 {
+	if (GetFreeSize() < size)
+		return 0;
 
+	if (GetDirectEnqueueSize() >= size)
+	{
+		m_rear += size;
+	}
+	else
+	{
+		m_rear = size - GetDirectEnqueueSize() - 1;
+	}
 
-	return 0;
+	return size;
 }
 
 int RingBuffer::MoveFront(int size)
 {
-	return 0;
+	if (GetUsedSize() < size)
+		return 0;
+
+	if (GetDirectDequeueSize() >= size)
+	{
+		m_front += size;
+	}
+	else
+	{
+		m_front = size - GetDirectDequeueSize() - 1;
+	}
+
+	return size;
 }

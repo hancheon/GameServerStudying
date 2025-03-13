@@ -1,141 +1,144 @@
-#include <iostream>
 #include "RingBuffer.h"
+#include <iostream>
 
-RingBuffer::RingBuffer() : m_front(0), m_rear(0), m_bufferSize(DEFAULT_RINGBUFSIZE), m_usedSize(0)
+RingBuffer::RingBuffer() : m_bufferSize(DEFAULT_BUFSIZE), m_usedSize(0), m_front(0), m_rear(0)
 {
-	m_buffer = new char[m_bufferSize + 1];
+	m_bufferPtr = new char[DEFAULT_BUFSIZE + 1];
 }
 
-RingBuffer::RingBuffer(int bufferSize) : m_front(0), m_rear(0), m_bufferSize(bufferSize), m_usedSize(0)
+RingBuffer::RingBuffer(int size) : m_bufferSize(size), m_usedSize(0), m_front(0), m_rear(0)
 {
-	m_buffer = new char[bufferSize + 1];
-} 
+	m_bufferPtr = new char[size + 1];
+}
 
 RingBuffer::~RingBuffer()
 {
-	delete[] m_buffer;
+	delete[] m_bufferPtr;
 }
 
-int RingBuffer::GetBufferSize()
+int RingBuffer::Enqueue(const char* data, int requestSize)
 {
-	return m_bufferSize;
-}
-
-int RingBuffer::GetUsedSize()
-{
-	return m_usedSize;
-}
-
-int RingBuffer::GetFreeSize()
-{
-	return m_bufferSize - m_usedSize;
-}
-
-int RingBuffer::Enqueue(const char* data, int size)
-{
-	int freeSize = GetFreeSize();
-
-	// 남은 공간이 없거나, data가 nullptr인 경우, size가 0보다 작은 경우에 에러처리
-	if (freeSize == 0 || data == nullptr || size <= 0)
-	{
+	if (data == nullptr || requestSize <= 0 || GetFreeSize() == 0)
 		return 0;
-	}
 
-	// 인큐 크기 결정
-	int enqueueSize;
-	if (freeSize < size)
+	// 링버퍼의 남은 공간보다 많은 데이터 인큐 요청 -> 가능한 크기만큼은 넣어주자
+	int size;
+	if (GetFreeSize() >= requestSize)
 	{
-		enqueueSize = freeSize;
+		size = requestSize;
 	}
 	else
 	{
-		enqueueSize = size;
+		size = GetFreeSize();
 	}
 
-	int directSize = GetDirectEnqueueSize();
-	if (directSize < enqueueSize) // 링버퍼의 rear가 마지막 인덱스를 초과하는 경우
+	if (GetDirectEnqueueSize() >= size)
 	{
-		memcpy(m_buffer + m_rear + 1, data, directSize);
-		memcpy(m_buffer, data + directSize, enqueueSize - directSize);
+		memcpy(GetRearPtr(), data, size);
 	}
 	else
 	{
-		memcpy(m_buffer + m_rear + 1, data, enqueueSize);
-	}
-	m_usedSize += enqueueSize;
+		int splite1 = GetDirectEnqueueSize();
+		int splite2 = size - splite1;
 
-	// rear 이동
-	MoveRear(enqueueSize);
-
-	return enqueueSize;
-}
-
-int RingBuffer::Dequeue(char* data, int size)
-{
-	if (m_usedSize == 0 || m_usedSize < size || data == nullptr || size <= 0) // 에러처리
-	{
-		return 0;
+		memcpy(GetRearPtr(), data, splite1);
+		memcpy(m_bufferPtr, data + splite1, splite2);
 	}
 
-	// 디큐
-	int directSize = GetDirectDequeueSize();
-	if (directSize < size) // 링버퍼의 front가 마지막 인덱스를 초과하는 경우
-	{
-		memcpy(data, m_buffer + m_front + 1, directSize);
-		memcpy(data + directSize, m_buffer, size - directSize);
-	}
-	else
-	{
-		memcpy(data, m_buffer + m_front + 1, size);
-	}
-	m_usedSize -= size;
-
-	MoveFront(size);
+	MoveRear(size);
 
 	return size;
 }
 
-int RingBuffer::Peek(char* data, int size)
+int RingBuffer::Dequeue(char* buffer, int requestSize)
 {
-	if (m_usedSize == 0 || m_usedSize < size || data == nullptr || size <= 0) // 에러처리
-	{
+	// 일단은 요청받은 크기만큼 데이터가 존재하지 않을 때는 데이터 추출x
+	if (buffer == nullptr || requestSize <= 0 || m_usedSize == 0 || m_usedSize < requestSize)
 		return 0;
-	}
 
-	int directSize = GetDirectDequeueSize();
-	if (directSize < size) // 링버퍼의 front가 마지막 인덱스를 초과하는 경우
+	if (GetDirectDequeueSize() >= requestSize)
 	{
-		memcpy(data, m_buffer + m_front + 1, directSize);
-		memcpy(data + directSize, m_buffer, size - directSize);
+		memcpy(buffer, GetFrontPtr(), requestSize);
 	}
 	else
 	{
-		memcpy(data, m_buffer + m_front + 1, size);
+		int splite1 = GetDirectDequeueSize();
+		int splite2 = requestSize - splite1;
+
+		memcpy(buffer, GetFrontPtr(), splite1);
+		memcpy(buffer + splite1, m_bufferPtr, splite2);
 	}
 
-	return size;
+	MoveFront(requestSize);
+
+	return requestSize;
+}
+
+int RingBuffer::Peek(char* buffer, int requestSize)
+{
+	if (buffer == nullptr || requestSize <= 0 || m_usedSize == 0 || m_usedSize < requestSize)
+		return 0;
+
+	if (GetDirectDequeueSize() >= requestSize)
+	{
+		memcpy(buffer, GetFrontPtr(), requestSize);
+	}
+	else
+	{
+		int splite1 = GetDirectDequeueSize();
+		int splite2 = requestSize - splite1;
+
+		memcpy(buffer, GetFrontPtr(), splite1);
+		memcpy(buffer + splite1, m_bufferPtr, splite2);
+	}
+
+	return requestSize;
+}
+
+int RingBuffer::DirectEnqueue(char* data, int size)
+{
+	return 0;
+}
+
+int RingBuffer::DirectDequeue(char* buffer, int size)
+{
+	return 0;
 }
 
 void RingBuffer::ClearBuffer()
 {
-	m_front = 0;
-	m_rear = 0;
+	m_front = m_rear;
 	m_usedSize = 0;
 }
 
-int RingBuffer::GetDirectEnqueueSize()
+int RingBuffer::GetBufferSize() const
+{
+	return m_bufferSize;
+}
+
+int RingBuffer::GetFreeSize() const
+{
+	return m_bufferSize - m_usedSize;
+}
+
+int RingBuffer::GetUsedSize() const
+{
+	return m_usedSize;
+}
+
+int RingBuffer::GetDirectEnqueueSize() const
 {
 	if (m_front <= m_rear)
 	{
 		return m_bufferSize - m_rear;
-	} 
+	}
 	else
 	{
 		return m_front - m_rear - 1;
 	}
 }
 
-int RingBuffer::GetDirectDequeueSize()
+int RingBuffer::GetDirectDequeueSize() const
 {
 	if (m_front <= m_rear)
 	{
@@ -147,42 +150,60 @@ int RingBuffer::GetDirectDequeueSize()
 	}
 }
 
+bool RingBuffer::IsEmpty() const
+{
+	return m_front == m_rear;
+}
+
+bool RingBuffer::IsFull() const
+{
+	return m_usedSize == m_bufferSize;
+}
+
+char* RingBuffer::GetRearPtr() const
+{
+	return (m_rear == m_bufferSize) ? m_bufferPtr : (m_bufferPtr + m_rear + 1);
+}
+
+char* RingBuffer::GetFrontPtr() const
+{
+	return (m_front == m_bufferSize) ? m_bufferPtr : (m_bufferPtr + m_front + 1);
+}
+
 int RingBuffer::MoveRear(int size)
 {
-	int directSize = GetDirectEnqueueSize();
-	if (size > directSize) // 링버퍼의 rear가 마지막 인덱스를 초과하는 경우
-	{
-		m_rear = size - directSize - 1;
-	}
-	else
+	if (GetFreeSize() < size)
+		return 0;
+
+	if (GetDirectEnqueueSize() >= size)
 	{
 		m_rear += size;
 	}
+	else
+	{
+		m_rear = size - GetDirectEnqueueSize() - 1;
+	}
+
+	m_usedSize += size;
 
 	return size;
 }
 
 int RingBuffer::MoveFront(int size)
 {
-	int directSize = GetDirectDequeueSize();
-	if (size > directSize) // 링버퍼의 front가 마지막 인덱스를 초과하는 경우
-	{
-		m_front = size - directSize - 1;
-	}
-	else
+	if (GetUsedSize() < size)
+		return 0;
+
+	if (GetDirectDequeueSize() >= size)
 	{
 		m_front += size;
 	}
+	else
+	{
+		m_front = size - GetDirectDequeueSize() - 1;
+	}
+
+	m_usedSize -= size;
 
 	return size;
-}
-
-char* RingBuffer::GetFrontBufferPtr()
-{
-	return m_buffer + m_front;
-}
-
-char* RingBuffer::GetRearBufferPtr()
-{
-	return m_buffer + m_rear;
 }

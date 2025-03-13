@@ -1,54 +1,51 @@
 #pragma once
 
-#define DEFAULT_RINGBUFSIZE 1024
+#define DEFAULT_BUFSIZE 1000
 
 class RingBuffer
 {
-public:
-	RingBuffer();
-	RingBuffer(int bufferSize);
-	~RingBuffer();
-
-	// 버퍼 크기 얻기
-	int GetBufferSize();
-
-	// 현재 사용중인 크기 얻기
-	int GetUsedSize();
-
-	// 현재 버퍼에 남은 크기 얻기  
-	int GetFreeSize();
-
-	// writePos에 데이터 넣기
-	int Enqueue(const char* data, int size);
-
-	// readPos에서 데이터 가져오기
-	int Dequeue(char* data, int size);
-
-	// readPos에서 데이터 가져오지만 readPos 변경x
-	int Peek(char* data, int size);
-
-	// 버퍼 모든 데이터 삭제
-	void ClearBuffer();
-
-	// 버퍼 포인터로 외부에서 한방에 읽고, 쓸 수 있는 길이 (끊어지지 않고 이어진 길이)
-	// 원형 큐의 구조상 끝단에 있는 데이터는 끝 -> 처음으로 돌아가서 2번에 데이터를 얻거나 넣을 수 있음
-	int GetDirectEnqueueSize();
-	int GetDirectDequeueSize();
-
-	// 실제 Front/Rear 위치 이동
-	int MoveFront(int size);
-	int MoveRear(int size);
-
-	// 버퍼의 front/rear 포인터 얻기
-	char* GetFrontBufferPtr();
-	char* GetRearBufferPtr();
-
 private:
-	char* m_buffer; // 링버퍼 메모리 위치 포인터
+	char* m_bufferPtr;
+
+	int m_bufferSize;
+	int m_usedSize;
 
 	int m_front;
 	int m_rear;
 
-	int m_bufferSize; // 버퍼 최대 크기
-	int m_usedSize; // 버퍼 내 현재 사용 중인 크기
+public:
+	RingBuffer();
+	RingBuffer(int);
+	~RingBuffer();
+
+	// 일반적인 데이터 삽입/추출
+	int Enqueue(const char*, int);
+	int Dequeue(char*, int);
+
+	// 데이터 추출하지 않고 복사
+	int Peek(char*, int);
+
+	// 직접적인 포인터 접근으로 데이터 삽입/추출
+	int DirectEnqueue(char*, int); // 현재 rear 위치에 직접 삽입
+	int DirectDequeue(char*, int); // 현재 front 위치에서 직접 추출
+
+	// 버퍼 데이터 삭제
+	void ClearBuffer(); // 데이터 흔적 남기기 위해 front와 rear 위치로 초기화
+
+	// 크기 얻는 함수
+	int GetBufferSize() const;
+	int GetFreeSize() const;
+	int GetUsedSize() const;
+	int GetDirectEnqueueSize() const; // 현재 rear 위치에서 연속적으로 삽입할 수 있는 데이터 크기
+	int GetDirectDequeueSize() const; // 현재 front 위치에서 연속적으로 추출할 수 있는 데이터 크기
+	bool IsEmpty() const;
+	bool IsFull() const;
+
+	// 위치 얻는 함수
+	char* GetRearPtr() const; // 직접 데이터를 넣기 위해 필요한 것으로 실제론 데이터를 넣을 다음 위치 반환 (rear + 1)
+	char* GetFrontPtr() const; // 직접 데이터를 뽑기 위해 필요한 것으로 실제론 데이터가 들어있는 시작 위치 반환 (front + 1)
+
+	// front와 rear 위치 이동
+	int MoveRear(int);
+	int MoveFront(int);
 };

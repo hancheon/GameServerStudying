@@ -221,7 +221,7 @@ bool readProc(SESSION* p)
     }
 
     // tcp 수신버퍼 -> 지역 버퍼
-    retval = recv(p->sock, buffer, min(MAX_BUFSIZE, p->readQ.GetFreeSize()), 0);
+    retval = recv(p->sock, buffer, min(MAX_BUFSIZE, p->readQ.GetFreeSize()), 0); // 링버퍼에 넣을 수 있는 최대로 가져옴
     if (retval == SOCKET_ERROR)
     {
         if (GetLastError() != WSAEWOULDBLOCK)
@@ -258,25 +258,23 @@ bool readProc(SESSION* p)
             printf("[Read 헤더 Peek 에러] 요청: %llu 성공: %d\n", sizeof(HEADER), retval);
             return false;
         }
-        printf("header.p_code: 0x%x header.p_size: 0x%x, header.p_type: 0x%x\n", header.p_code, header.p_size, header.p_type);
+        
+        // 헤더 코드 확인
+        if (header.p_code != PACKET_CODE)
+        {
+            printf("패킷 코드 이상 GetUsedSize(): %d\n", p->readQ.GetUsedSize());
+            break;
+        }
 
         // 헤더 + 페이로드 확인
         if (p->readQ.GetUsedSize() < sizeof(HEADER) + header.p_size)
             break;
 
-        retval = p->readQ.Dequeue((char*)&header, sizeof(HEADER));
         // 헤더만큼 프론트 이동
-        //p->readQ.MoveFront(retval);
+        p->readQ.Dequeue((char*)&header, sizeof(HEADER));
 
         char payload[100];
-        if (header.p_size > 100)
-        {
-            printf("페이로드 사이즈: %d\n", header.p_size);
-            printf("%d\n", sum);
-        }
-        memset(payload, 0, sizeof(payload));
         retval = p->readQ.Dequeue(payload, header.p_size);
-
         if (retval != header.p_size)
         {
             printf("[Read 페이로드 디큐 에러] 요청: %lu 성공: %d\n", header.p_size, retval);

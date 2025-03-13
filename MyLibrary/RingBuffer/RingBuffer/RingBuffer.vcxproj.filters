@@ -18,12 +18,12 @@
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="임시.cpp">
+    <ClCompile Include="RingBuffer.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="임시.h">
+    <ClInclude Include="RingBuffer.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
   </ItemGroup>
