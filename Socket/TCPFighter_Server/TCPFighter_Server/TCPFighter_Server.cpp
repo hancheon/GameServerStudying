@@ -15,6 +15,8 @@
 SOCKET listen_sock;
 int oldTick;
 int fps;
+bool serverShut = false;
+
 // 전방선언
 bool initServer();
 
@@ -36,11 +38,9 @@ int wmain(int argc, wchar_t* argv[])
     oldTick = timeGetTime();
     fps = timeGetTime();
     // 서버 로직
-    while (1)
+    while (!serverShut)
     {
-        if (!networkProc())
-            break;
-
+        networkProc();
         update();
     }
 

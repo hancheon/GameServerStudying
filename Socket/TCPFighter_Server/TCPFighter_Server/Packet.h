@@ -2,7 +2,6 @@
 #include "Protocol.h"
 
 #define dfERROR_RANGE 50
-#define DAMAGE 10
 #define dfATTACK1_RANGE_X		80
 #define dfATTACK2_RANGE_X		90
 #define dfATTACK3_RANGE_X		100
@@ -10,6 +9,8 @@
 #define dfATTACK2_RANGE_Y		10
 #define dfATTACK3_RANGE_Y		20
 
+#define DAMAGE1 3
+#define DAMAGE2 5
 #define NOT_MOVE 111
 
 // recv한 패킷 처리 함수

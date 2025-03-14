@@ -6,9 +6,7 @@ class RingBuffer
 {
 private:
 	char* m_bufferPtr;
-
 	int m_bufferSize;
-	int m_usedSize;
 
 	int m_front;
 	int m_rear;

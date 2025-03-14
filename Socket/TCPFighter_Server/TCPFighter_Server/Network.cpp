@@ -1,7 +1,5 @@
 #include <iostream>
-//#include "Protocol.h"
 #include "Network.h"
-//#include "Session.h"
 #include "Packet.h"
 #include "myList.h"
 #include "Contents.h"
@@ -10,9 +8,9 @@ extern SOCKET listen_sock;
 DWORD uniqueID = 0;
 myList<SESSION*> users;
 myList<SESSION*> disconnects;
-int sum = 0;
+extern bool serverShut;
 
-bool networkProc()
+void networkProc()
 {
     int retval;
 
@@ -43,21 +41,18 @@ bool networkProc()
         // accept()
         if (FD_ISSET(listen_sock, &rSet)) // 리슨 소켓 연결 요청 확인
         {
-            if (!acceptProc())
-                return false;
+            acceptProc();
         }
 
         for (iter = users.begin(); iter != users.end(); iter++)
         {
             if (FD_ISSET((*iter)->sock, &rSet)) // readSet 조사
             {
-                if (!readProc(*iter))
-                    return false;
+                readProc(*iter);
             }
             if (FD_ISSET((*iter)->sock, &wSet)) // writeSet 조사
             {
-                if (!writeProc(*iter))
-                    return false;
+                writeProc(*iter);
             }
         }
 
@@ -68,14 +63,12 @@ bool networkProc()
         if (GetLastError() != WSAEWOULDBLOCK)
         {
             printf("%d\n", GetLastError());
-            return false;
+            serverShut = true;
         }
     }
-
-    return true;
 }
 
-bool acceptProc()
+void acceptProc()
 {
     SOCKET client_sock;
     SOCKADDR_IN clientAddr;
@@ -87,7 +80,7 @@ bool acceptProc()
         if (GetLastError() != WSAEWOULDBLOCK)
         {
             printf("%d\n", GetLastError());
-            return false;
+            serverShut = true;
         }
     }
 
@@ -105,22 +98,26 @@ bool acceptProc()
     HEADER header;
     SC_CREATE_MY_CHARACTER sc_my_character;
     createPacket_CREATE_MY_CHARACTER(&header, (char*)&sc_my_character, newPlayer->sessionID, newPlayer->direction, newPlayer->xPos, newPlayer->yPos, newPlayer->HP);
-    if (!unicast(newPlayer, &header, (char*)&sc_my_character))
-        return false;
+    unicast(newPlayer, &header, (char*)&sc_my_character);
 
     // [서버 -> 모든 플레이어] 새로운 플레이어 생성 Broadcast
     SC_CREATE_OTHER_CHARACTER sc_other_character;
     createPacket_CREATE_OTHER_CHARACTER(&header, (char*)&sc_other_character, newPlayer->sessionID, newPlayer->direction, newPlayer->xPos, newPlayer->yPos, newPlayer->HP);
-    if (!broadcast(nullptr, &header, (char*)&sc_other_character))
-        return false;
+    broadcast(nullptr, &header, (char*)&sc_other_character);
 
     // [서버 -> 새로운 플레이어] 기존 플레이어 생성 Unicast
     myList<SESSION*>::iterator iter;
     for (iter = users.begin(); iter != users.end(); iter++)
     {
         createPacket_CREATE_OTHER_CHARACTER(&header, (char*)&sc_other_character, (*iter)->sessionID, (*iter)->direction, (*iter)->xPos, (*iter)->yPos, (*iter)->HP);
-        if (!unicast(newPlayer, &header, (char*)&sc_other_character))
-            return false;
+        unicast(newPlayer, &header, (char*)&sc_other_character);
+
+        if ((*iter)->action != NOT_MOVE)
+        {
+            SC_MOVE_START sc_move_start;
+            createPacket_MOVE_START(&header, (char*)&sc_move_start, (*iter)->sessionID, (*iter)->action, (*iter)->xPos, (*iter)->yPos);
+            unicast(newPlayer, &header, (char*)&sc_move_start);
+        }
     }
 
     // 플레이어 리스트에 추가
@@ -129,24 +126,24 @@ bool acceptProc()
     uniqueID++;
 
     wprintf(L"# [New User] SessionID: %lu | direction: RR | xPos: %d | yPos: %d | HP: %d\n", newPlayer->sessionID, newPlayer->xPos, newPlayer->yPos, newPlayer->HP);
-
-    return true;
 }
 
-bool unicast(SESSION* p, HEADER* header, char* payload)
+void unicast(SESSION* p, HEADER* header, char* payload)
 {
     int retval;
 
     if (p == nullptr)
     {
         printf("Unicast 대상이 존재하지 않음\n");
-        return false;
+        serverShut = true;
+        return;
     }
     else if (p->writeQ.GetFreeSize() == 0) // 처리 불가능한 데이터로 링버터 가득참
     {
         printf("Unicast 링버퍼 가득참\n");
         disconnect(p);
-        return true;
+        serverShut = true;
+        return;
     }
 
     retval = p->writeQ.Enqueue((char*)header, sizeof(HEADER));
@@ -154,7 +151,8 @@ bool unicast(SESSION* p, HEADER* header, char* payload)
     {
         printf("[Unicast 헤더 인큐 에러] 요청: %llu 성공: %d\n", sizeof(HEADER), retval);
         disconnect(p);
-        return true;
+        serverShut = true;
+        return;
     }
 
     retval = p->writeQ.Enqueue(payload, header->p_size);
@@ -162,13 +160,12 @@ bool unicast(SESSION* p, HEADER* header, char* payload)
     {
         printf("[Unicast 페이로드 인큐 에러] 요청: %d 성공: %d\n", header->p_size, retval);
         disconnect(p);
-        return true;
+        serverShut = true;
+        return;
     }
-
-    return true;
 }
 
-bool broadcast(SESSION* p, HEADER* header, char* payload)
+void broadcast(SESSION* p, HEADER* header, char* payload)
 {
     int retval;
 
@@ -201,14 +198,12 @@ bool broadcast(SESSION* p, HEADER* header, char* payload)
             }
         }
     }
-
-    return true;
 }
 
-bool readProc(SESSION* p)
+void readProc(SESSION* p)
 {
     if (p == nullptr)
-        return false;
+        return;
 
     int retval;
     char buffer[MAX_BUFSIZE];
@@ -217,7 +212,8 @@ bool readProc(SESSION* p)
     {
         printf("수신 링버퍼 가득참");
         disconnect(p);
-        return true;
+        serverShut = true;
+        return;
     }
 
     // tcp 수신버퍼 -> 지역 버퍼
@@ -227,13 +223,14 @@ bool readProc(SESSION* p)
         if (GetLastError() != WSAEWOULDBLOCK)
         {
             printf("%d", GetLastError());
-            return false;
+            serverShut = true;
+            return;
         }
     }
     else if (retval == 0)
     {
         disconnect(p);
-        return true;
+        return;
     }
 
     // 지역 버퍼 -> 링버퍼
@@ -241,7 +238,8 @@ bool readProc(SESSION* p)
     if (retval_enq != retval)
     {
         printf("[Read 인큐 에러] 요청: %d 성공: %d\n", retval, retval_enq);
-        return false;
+        serverShut = true;
+        return;
     }
 
     while (1)
@@ -256,7 +254,8 @@ bool readProc(SESSION* p)
         if (retval != sizeof(HEADER))
         {
             printf("[Read 헤더 Peek 에러] 요청: %llu 성공: %d\n", sizeof(HEADER), retval);
-            return false;
+            serverShut = true;
+            break;
         }
         
         // 헤더 코드 확인
@@ -278,23 +277,22 @@ bool readProc(SESSION* p)
         if (retval != header.p_size)
         {
             printf("[Read 페이로드 디큐 에러] 요청: %lu 성공: %d\n", header.p_size, retval);
-            return false;
+            serverShut = true;
+            break;
         }
 
         if (!packetProc(p, header.p_type, payload))
         {
             wprintf(L"[packetProc() 에러]\n");
-            return false;
+            break;
         }
     }
-
-    return true;
 }
 
-bool writeProc(SESSION* p)
+void writeProc(SESSION* p)
 {
     if (p == nullptr)
-        return false;
+        return;
 
     int retval;
     char buffer[MAX_BUFSIZE];
@@ -306,14 +304,13 @@ bool writeProc(SESSION* p)
         if (GetLastError() != WSAEWOULDBLOCK)
         {
             printf("%d", GetLastError());
-            return false;
+            serverShut = true;
+            return;
         }
     }
-
-    return true;
 }
 
-bool disconnect(SESSION* p)
+void disconnect(SESSION* p)
 {
     // [Server -> 모든 플레이어] 해당 유저 삭제 요청 Broadcast
     myList<SESSION*>::iterator iter;
@@ -324,16 +321,13 @@ bool disconnect(SESSION* p)
             HEADER header;
             SC_DELETE_CHARACTER payload;
             createPacket_DELETE(&header, (char*)&payload, p->sessionID);
-            if (!broadcast(p, &header, (char*)&payload))
-                return false;
+            broadcast(p, &header, (char*)&payload);
         }
     }
 
     disconnects.push_back(p);
 
     printf("# [Delete User] SessionID: %lu\n", p->sessionID);
-
-    return true;
 }
 
 void deleteUser()

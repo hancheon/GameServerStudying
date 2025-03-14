@@ -6,11 +6,11 @@
 #define PACKET_CODE 0x89
 #define MAX_BUFSIZE 1024
 
-bool networkProc();
-bool acceptProc();
-bool readProc(SESSION*);
-bool writeProc(SESSION*);
-bool unicast(SESSION*, HEADER*, char*);
-bool broadcast(SESSION*, HEADER*, char*);
-bool disconnect(SESSION*);
+void networkProc();
+void acceptProc();
+void readProc(SESSION*);
+void writeProc(SESSION*);
+void unicast(SESSION*, HEADER*, char*);
+void broadcast(SESSION*, HEADER*, char*);
+void disconnect(SESSION*);
 void deleteUser();

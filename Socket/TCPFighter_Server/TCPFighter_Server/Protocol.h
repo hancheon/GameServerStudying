@@ -31,9 +31,9 @@
 */
 struct HEADER
 {
-	BYTE p_code;
-	BYTE p_size;
-	BYTE p_type;
+	BYTE p_code; // 匙飘况农
+	BYTE p_size; // 匙飘况农
+	BYTE p_type; // 牧刨明
 };
 
 

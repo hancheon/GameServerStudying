@@ -4,11 +4,9 @@
 #include "Contents.h"
 #include "Network.h"
 #include "myList.h"
-#pragma comment(lib, "Winmm")
 
-int frame = 0;
 extern int oldTick;
-extern int fps;
+
 extern myList<SESSION*> users;
 extern myList<SESSION*> disconnects;
 
@@ -28,6 +26,8 @@ void update()
         }
         else // 이동처리
         {
+            int nextXPos;
+            int nextYPos;
             switch ((*iter)->action)
             {
             case dfPACKET_MOVE_DIR_LL:
@@ -38,8 +38,13 @@ void update()
             }
             case dfPACKET_MOVE_DIR_LU:
             {
-                (*iter)->xPos = moveLeft((*iter)->xPos);
-                (*iter)->yPos = moveUp((*iter)->yPos);
+                nextXPos = moveLeft((*iter)->xPos);
+                nextYPos = moveUp((*iter)->yPos);
+                if (nextXPos != dfRANGE_MOVE_LEFT && nextYPos != dfRANGE_MOVE_TOP)
+                {
+                    (*iter)->xPos = nextXPos;
+                    (*iter)->yPos = nextYPos;
+                }
                 printf("# [MOVE] SessionID: %d | direction: LU | xPos: %d | yPos: %d\n", (*iter)->sessionID, (*iter)->xPos, (*iter)->yPos);
                 break;
             }
@@ -51,8 +56,13 @@ void update()
             }
             case dfPACKET_MOVE_DIR_RU:
             {
-                (*iter)->xPos = moveRight((*iter)->xPos);
-                (*iter)->yPos = moveUp((*iter)->yPos);
+                nextXPos = moveRight((*iter)->xPos);
+                nextYPos = moveUp((*iter)->yPos);
+                if (nextXPos != dfRANGE_MOVE_RIGHT && nextYPos != dfRANGE_MOVE_TOP)
+                {
+                    (*iter)->xPos = nextXPos;
+                    (*iter)->yPos = nextYPos;
+                }
                 printf("# [MOVE] SessionID: %d | direction: RU | xPos: %d | yPos: %d\n", (*iter)->sessionID, (*iter)->xPos, (*iter)->yPos);
                 break;
             }
@@ -64,8 +74,13 @@ void update()
             }
             case dfPACKET_MOVE_DIR_RD:
             {
-                (*iter)->xPos = moveRight((*iter)->xPos);
-                (*iter)->yPos = moveDown((*iter)->yPos);
+                nextXPos = moveRight((*iter)->xPos);
+                nextYPos = moveDown((*iter)->yPos);
+                if (nextXPos != dfRANGE_MOVE_RIGHT && nextYPos != dfRANGE_MOVE_BOTTOM)
+                {
+                    (*iter)->xPos = nextXPos;
+                    (*iter)->yPos = nextYPos;
+                }
                 printf("# [MOVE] SessionID: %d | direction: RD | xPos: %d | yPos: %d\n", (*iter)->sessionID, (*iter)->xPos, (*iter)->yPos);
                 break;
             }
@@ -77,8 +92,13 @@ void update()
             }
             case dfPACKET_MOVE_DIR_LD:
             {
-                (*iter)->xPos = moveLeft((*iter)->xPos);
-                (*iter)->yPos = moveDown((*iter)->yPos);
+                nextXPos = moveLeft((*iter)->xPos);
+                nextYPos = moveDown((*iter)->yPos);
+                if (nextXPos != dfRANGE_MOVE_LEFT && nextYPos != dfRANGE_MOVE_BOTTOM)
+                {
+                    (*iter)->xPos = nextXPos;
+                    (*iter)->yPos = nextYPos;
+                }
                 printf("# [MOVE] SessionID: %d | direction: LD | xPos: %d | yPos: %d\n", (*iter)->sessionID, (*iter)->xPos, (*iter)->yPos);
                 break;
             }
