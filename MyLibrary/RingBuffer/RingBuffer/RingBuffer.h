@@ -4,6 +4,7 @@
 
 class RingBuffer
 {
+<<<<<<< Updated upstream
 private:
 	char* m_bufferPtr;
 	int m_bufferSize;
@@ -11,6 +12,8 @@ private:
 	int m_front;
 	int m_rear;
 
+=======
+>>>>>>> Stashed changes
 public:
 	RingBuffer();
 	RingBuffer(int);
@@ -22,10 +25,6 @@ public:
 
 	// 데이터 추출하지 않고 복사
 	int Peek(char*, int);
-
-	// 직접적인 포인터 접근으로 데이터 삽입/추출
-	int DirectEnqueue(char*, int); // 현재 rear 위치에 직접 삽입
-	int DirectDequeue(char*, int); // 현재 front 위치에서 직접 추출
 
 	// 버퍼 데이터 삭제
 	void ClearBuffer(); // 데이터 흔적 남기기 위해 front와 rear 위치로 초기화
@@ -40,10 +39,18 @@ public:
 	bool IsFull() const;
 
 	// 위치 얻는 함수
+	char* GetBufferPtr() const;
 	char* GetRearPtr() const; // 직접 데이터를 넣기 위해 필요한 것으로 실제론 데이터를 넣을 다음 위치 반환 (rear + 1)
 	char* GetFrontPtr() const; // 직접 데이터를 뽑기 위해 필요한 것으로 실제론 데이터가 들어있는 시작 위치 반환 (front + 1)
 
 	// front와 rear 위치 이동
 	int MoveRear(int);
 	int MoveFront(int);
+
+private:
+	char* m_bufferPtr;
+	int m_bufferSize;
+
+	int m_front;
+	int m_rear;
 };

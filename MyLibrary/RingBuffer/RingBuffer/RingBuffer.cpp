@@ -6,7 +6,11 @@ RingBuffer::RingBuffer() : m_bufferSize(DEFAULT_BUFSIZE), m_front(0), m_rear(0)
 	m_bufferPtr = new char[DEFAULT_BUFSIZE + 1];
 }
 
+<<<<<<< Updated upstream
 RingBuffer::RingBuffer(int size) : m_bufferSize(size),  m_front(0), m_rear(0)
+=======
+RingBuffer::RingBuffer(int size) : m_bufferSize(size), m_front(0), m_rear(0)
+>>>>>>> Stashed changes
 {
 	m_bufferPtr = new char[size + 1];
 }
@@ -34,18 +38,18 @@ int RingBuffer::Enqueue(const char* data, int requestSize)
 
 	if (GetDirectEnqueueSize() >= size)
 	{
-		memcpy(GetRearPtr(), data, size);
+		memcpy(m_bufferPtr + m_rear + 1, data, size);
 	}
 	else
 	{
 		int splite1 = GetDirectEnqueueSize();
 		int splite2 = size - splite1;
 
-		memcpy(GetRearPtr(), data, splite1);
+		memcpy(m_bufferPtr + m_rear + 1, data, splite1);
 		memcpy(m_bufferPtr, data + splite1, splite2);
 	}
 
-	MoveRear(size);
+	m_rear = (m_rear + size) % (m_bufferSize + 1);
 
 	return size;
 }
@@ -53,23 +57,27 @@ int RingBuffer::Enqueue(const char* data, int requestSize)
 int RingBuffer::Dequeue(char* buffer, int requestSize)
 {
 	// 일단은 요청받은 크기만큼 데이터가 존재하지 않을 때는 데이터 추출x
+<<<<<<< Updated upstream
 	if (buffer == nullptr || requestSize <= 0 || IsEmpty() == 0 || GetUsedSize() < requestSize)
+=======
+	if (buffer == nullptr || requestSize <= 0 || IsEmpty() || GetUsedSize() < requestSize)
+>>>>>>> Stashed changes
 		return 0;
 
 	if (GetDirectDequeueSize() >= requestSize)
 	{
-		memcpy(buffer, GetFrontPtr(), requestSize);
+		memcpy(buffer, m_bufferPtr + m_front + 1, requestSize);
 	}
 	else
 	{
 		int splite1 = GetDirectDequeueSize();
 		int splite2 = requestSize - splite1;
 
-		memcpy(buffer, GetFrontPtr(), splite1);
+		memcpy(buffer, m_bufferPtr + m_front + 1, splite1);
 		memcpy(buffer + splite1, m_bufferPtr, splite2);
 	}
 
-	MoveFront(requestSize);
+	m_front = (m_front + requestSize) % (m_bufferSize + 1);
 
 	return requestSize;
 }
@@ -81,28 +89,18 @@ int RingBuffer::Peek(char* buffer, int requestSize)
 
 	if (GetDirectDequeueSize() >= requestSize)
 	{
-		memcpy(buffer, GetFrontPtr(), requestSize);
+		memcpy(buffer, m_bufferPtr + m_front + 1, requestSize);
 	}
 	else
 	{
 		int splite1 = GetDirectDequeueSize();
 		int splite2 = requestSize - splite1;
 
-		memcpy(buffer, GetFrontPtr(), splite1);
+		memcpy(buffer, m_bufferPtr + m_front + 1, splite1);
 		memcpy(buffer + splite1, m_bufferPtr, splite2);
 	}
 
 	return requestSize;
-}
-
-int RingBuffer::DirectEnqueue(char* data, int size)
-{
-	return 0;
-}
-
-int RingBuffer::DirectDequeue(char* buffer, int size)
-{
-	return 0;
 }
 
 void RingBuffer::ClearBuffer()
@@ -117,36 +115,30 @@ int RingBuffer::GetBufferSize() const
 
 int RingBuffer::GetFreeSize() const
 {
+<<<<<<< Updated upstream
 	return m_bufferSize - GetUsedSize();
+=======
+	return (m_rear >= m_front) ? (m_bufferSize - m_rear + m_front) : (m_front - m_rear - 1);
+>>>>>>> Stashed changes
 }
 
 int RingBuffer::GetUsedSize() const
 {
+<<<<<<< Updated upstream
 	return (m_rear - m_front) >= 0 ? (m_rear - m_front) : (m_bufferSize - m_front + m_rear + 1);
+=======
+	return (m_rear >= m_front) ? (m_rear - m_front) : (m_bufferSize - m_front + m_rear + 1);
+>>>>>>> Stashed changes
 }
 
 int RingBuffer::GetDirectEnqueueSize() const
 {
-	if (m_front <= m_rear)
-	{
-		return m_bufferSize - m_rear;
-	}
-	else
-	{
-		return m_front - m_rear - 1;
-	}
+	return (m_front <= m_rear) ? (m_bufferSize - m_rear) : (m_front - m_rear - 1);
 }
 
 int RingBuffer::GetDirectDequeueSize() const
 {
-	if (m_front <= m_rear)
-	{
-		return m_rear - m_front;
-	}
-	else
-	{
-		return m_bufferSize - m_front;
-	}
+	return (m_front <= m_rear) ? (m_rear - m_front) : m_bufferSize - m_front;
 }
 
 bool RingBuffer::IsEmpty() const
@@ -156,7 +148,17 @@ bool RingBuffer::IsEmpty() const
 
 bool RingBuffer::IsFull() const
 {
+<<<<<<< Updated upstream
 	return (m_rear + 1) % (m_bufferSize + 1) == m_front;
+=======
+	return ((m_rear + 1) % (m_bufferSize + 1)) == m_front;
+}
+
+
+char* RingBuffer::GetBufferPtr() const
+{
+	return m_bufferPtr;
+>>>>>>> Stashed changes
 }
 
 char* RingBuffer::GetRearPtr() const
@@ -174,6 +176,7 @@ int RingBuffer::MoveRear(int size)
 	if (GetFreeSize() < size)
 		return 0;
 
+<<<<<<< Updated upstream
 	if (GetDirectEnqueueSize() >= size)
 	{
 		m_rear += size;
@@ -184,6 +187,9 @@ int RingBuffer::MoveRear(int size)
 	}
 
 	return size;
+=======
+	return (m_rear + size) % (m_bufferSize + 1);
+>>>>>>> Stashed changes
 }
 
 int RingBuffer::MoveFront(int size)
@@ -191,6 +197,7 @@ int RingBuffer::MoveFront(int size)
 	if (GetUsedSize() < size)
 		return 0;
 
+<<<<<<< Updated upstream
 	if (GetDirectDequeueSize() >= size)
 	{
 		m_front += size;
@@ -201,4 +208,7 @@ int RingBuffer::MoveFront(int size)
 	}
 
 	return size;
+=======
+	return (m_front + size) % (m_bufferSize + 1);
+>>>>>>> Stashed changes
 }
