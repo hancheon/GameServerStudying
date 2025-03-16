@@ -214,18 +214,49 @@ void readProc(SESSION* p)
         return;
     }
 
-    // tcp 수신버퍼 -> 지역 버퍼
-    retval = recv(p->sock, buffer, min(MAX_BUFSIZE, p->readQ.GetFreeSize()), 0); // 링버퍼에 넣을 수 있는 최대로 가져옴
+    //// tcp 수신버퍼 -> 지역 버퍼
+    //retval = recv(p->sock, buffer, min(MAX_BUFSIZE, p->readQ.GetFreeSize()), 0); // 링버퍼에 넣을 수 있는 최대로 가져옴
+    //if (retval == SOCKET_ERROR)
+    //{
+    //    if (GetLastError() != WSAEWOULDBLOCK)
+    //    {
+    //        if (GetLastError() == WSAECONNRESET)
+    //        {
+    //            disconnect(p);
+    //            return;
+    //        }
+    //        printf("%d", GetLastError());
+    //        serverShut = true;
+    //        return;
+    //    }
+    //}
+    //else if (retval == 0)
+    //{
+    //    disconnect(p);
+    //    return;
+    //}
+
+    //// 지역 버퍼 -> 링버퍼
+    //int retval_enq = p->readQ.Enqueue(buffer, retval);
+    //if (retval_enq != retval)
+    //{
+    //    printf("[Read 인큐 에러] 요청: %d 성공: %d\n", retval, retval_enq);
+    //    serverShut = true;
+    //    return;
+    //}
+
+    // tcp 수신버퍼 -> 링버퍼
+    retval = recv(p->sock, p->readQ.GetRearPtr(), p->readQ.GetDirectEnqueueSize(), 0);
     if (retval == SOCKET_ERROR)
     {
         if (GetLastError() != WSAEWOULDBLOCK)
         {
-            if (GetLastError() == WSAECONNRESET)
+            if (GetLastError() == WSAECONNRESET) // 클라이언트의 강제종료
             {
                 disconnect(p);
                 return;
             }
-            printf("%d", GetLastError());
+            printf("%d\n", GetLastError());
             serverShut = true;
             return;
         }
@@ -236,14 +267,7 @@ void readProc(SESSION* p)
         return;
     }
 
-    // 지역 버퍼 -> 링버퍼
-    int retval_enq = p->readQ.Enqueue(buffer, retval);
-    if (retval_enq != retval)
-    {
-        printf("[Read 인큐 에러] 요청: %d 성공: %d\n", retval, retval_enq);
-        serverShut = true;
-        return;
-    }
+    p->readQ.MoveRear(retval);
 
     while (1)
     {

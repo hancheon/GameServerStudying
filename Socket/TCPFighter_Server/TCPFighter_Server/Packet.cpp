@@ -73,7 +73,33 @@ bool packetProc_MOVE_START(SESSION* p, const char* payload)
 	createPacket_MOVE_START(&header, (char*)&newPayload, p->sessionID, p->action, p->xPos, p->yPos);
 	broadcast(p, &header, (char*)&newPayload);
 
-	printf("# [MOVE_START] SessionID: %d | direction: %d | xPos: %d | yPos: %d\n", p->sessionID, p->action, p->xPos, p->yPos);
+	switch (p->action)
+	{
+	case dfPACKET_MOVE_DIR_LL:
+		printf("# [MOVE] SessionID: %d | direction: LL | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_LU:
+		printf("# [MOVE] SessionID: %d | direction: LU | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_UU:
+		printf("# [MOVE] SessionID: %d | direction: UU | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_RU:
+		printf("# [MOVE] SessionID: %d | direction: RU | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_RR:
+		printf("# [MOVE] SessionID: %d | direction: RR | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_RD:
+		printf("# [MOVE] SessionID: %d | direction: RD | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_DD:
+		printf("# [MOVE] SessionID: %d | direction: DD | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_LD:
+		printf("# [MOVE] SessionID: %d | direction: LD | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	}
 
 	return true;
 }
@@ -98,7 +124,14 @@ bool packetProc_MOVE_STOP(SESSION* p, const char* payload)
 	createPacket_MOVE_STOP(&header, (char*)&newPayload, p->sessionID, p->direction, p->xPos, p->yPos);
 	broadcast(p, &header, (char*)&newPayload);
 
-	printf("# [MOVE_STOP]  SessionID: %d | direction: %d | xPos: %d | yPos: %d\n", p->sessionID, p->direction, p->xPos, p->yPos);
+	if (p->direction == dfPACKET_MOVE_DIR_LL)
+	{
+		printf("# [MOVE_STOP]  SessionID: %d | direction: LL | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+	}
+	else
+	{
+		printf("# [MOVE_STOP]  SessionID: %d | direction: RR | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+	}
 
 	return true;
 }
