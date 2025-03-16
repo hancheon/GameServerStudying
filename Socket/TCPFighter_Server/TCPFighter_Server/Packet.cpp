@@ -91,7 +91,7 @@ bool packetProc_MOVE_STOP(SESSION* p, const char* payload)
 	p->direction = msg->direction;
 	p->xPos = msg->xPos;
 	p->yPos = msg->yPos;
-	p->action = NOT_MOVE;
+	p->action = dfPACKET_MOVE_STOP;
 
 	HEADER header;
 	SC_MOVE_STOP newPayload;
@@ -130,14 +130,7 @@ bool packetProc_ATTACK1(SESSION* p, const char* payload)
 					continue;
 			}
 
-			if ((*iter)->HP > 0)
-			{
-				(*iter)->HP -= DAMAGE1;
-			}
-			else
-			{
-				disconnect((*iter));
-			}
+			(*iter)->HP = max((*iter)->HP - DAMAGE1, 0);
 
 			HEADER header;
 			SC_DAMAGE newPayload;
@@ -145,6 +138,10 @@ bool packetProc_ATTACK1(SESSION* p, const char* payload)
 			broadcast(nullptr, &header, (char*)&newPayload);
 			printf("# [ATTACK1] AttackerID: %d | DemagedID: %d | HP: %d\n", p->sessionID, (*iter)->sessionID, (*iter)->HP);
 
+			if ((*iter)->HP <= 0)
+			{
+				disconnect((*iter));
+			}
 		}
 	}
 
@@ -177,20 +174,18 @@ bool packetProc_ATTACK2(SESSION* p, const char* payload)
 					continue;
 			}
 
-			if ((*iter)->HP > 0)
-			{
-				(*iter)->HP -= DAMAGE1;
-			}
-			else
-			{
-				disconnect((*iter));
-			}
+			(*iter)->HP = max((*iter)->HP - DAMAGE1, 0);
 
 			HEADER header;
 			SC_DAMAGE newPayload;
 			createPacket_DAMAGE(&header, (char*)&newPayload, p->sessionID, (*iter)->sessionID, (*iter)->HP);
 			broadcast(nullptr, &header, (char*)&newPayload);
 			printf("# [ATTACK2] AttackerID: %d | DemagedID: %d | HP: %d\n", p->sessionID, (*iter)->sessionID, (*iter)->HP);
+			
+			if ((*iter)->HP <= 0)
+			{
+				disconnect((*iter));
+			}
 		}
 	}
 
@@ -226,11 +221,7 @@ bool packetProc_ATTACK3(SESSION* p, const char* payload)
 
 			if ((*iter)->HP > 0)
 			{
-				(*iter)->HP -= DAMAGE2;
-			}
-			else
-			{
-				disconnect((*iter));
+				(*iter)->HP = max((*iter)->HP - DAMAGE2, 0);
 			}
 
 			HEADER header;
@@ -239,6 +230,10 @@ bool packetProc_ATTACK3(SESSION* p, const char* payload)
 			broadcast(nullptr, &header, (char*)&newPayload);
 			printf("# [ATTACK3] AttackerID: %d | DemagedID: %d | HP: %d\n", p->sessionID, (*iter)->sessionID, (*iter)->HP);
 
+			if ((*iter)->HP <= 0)
+			{
+				disconnect((*iter));
+			}
 		}
 	}
 

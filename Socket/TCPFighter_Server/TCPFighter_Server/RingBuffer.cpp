@@ -156,7 +156,9 @@ int RingBuffer::MoveRear(int size)
 	if (GetFreeSize() < size)
 		return 0;
 
-	return (m_rear + size) % (m_bufferSize + 1);
+	m_rear = (m_rear + size) % (m_bufferSize + 1);
+
+	return size;
 }
 
 int RingBuffer::MoveFront(int size)
@@ -164,5 +166,7 @@ int RingBuffer::MoveFront(int size)
 	if (GetUsedSize() < size)
 		return 0;
 
-	return (m_front + size) % (m_bufferSize + 1);
+	m_front = (m_front + size) % (m_bufferSize + 1);
+
+	return size;
 }

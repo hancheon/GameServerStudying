@@ -11,7 +11,7 @@
 
 #define DAMAGE1 3
 #define DAMAGE2 5
-#define NOT_MOVE 111
+#define dfPACKET_MOVE_STOP 8
 
 // recv한 패킷 처리 함수
 bool packetProc(SESSION*, BYTE, const char*);

@@ -31,7 +31,7 @@ void networkProc()
             FD_SET((*iter)->sock, &wSet);
     }
 
-    timeval timeout; // 대기X (어차피 루프 도니까?
+    timeval timeout; // 대기X 어차피 while문으로 계속 반복중
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
 
@@ -89,7 +89,7 @@ void acceptProc()
     newPlayer->sock = client_sock;
     newPlayer->sessionID = uniqueID;
     newPlayer->direction = dfPACKET_MOVE_DIR_RR;
-    newPlayer->action = NOT_MOVE; // 캐릭터 행동 상태 확인용 변수
+    newPlayer->action = dfPACKET_MOVE_STOP; // 캐릭터 행동 상태 확인용 변수
     newPlayer->xPos = (dfRANGE_MOVE_RIGHT - dfRANGE_MOVE_LEFT) / 2;
     newPlayer->yPos = (dfRANGE_MOVE_BOTTOM - dfRANGE_MOVE_TOP) / 2;
     newPlayer->HP = MAX_HP;
@@ -112,7 +112,7 @@ void acceptProc()
         createPacket_CREATE_OTHER_CHARACTER(&header, (char*)&sc_other_character, (*iter)->sessionID, (*iter)->direction, (*iter)->xPos, (*iter)->yPos, (*iter)->HP);
         unicast(newPlayer, &header, (char*)&sc_other_character);
 
-        if ((*iter)->action != NOT_MOVE)
+        if ((*iter)->action != dfPACKET_MOVE_STOP)
         {
             SC_MOVE_START sc_move_start;
             createPacket_MOVE_START(&header, (char*)&sc_move_start, (*iter)->sessionID, (*iter)->action, (*iter)->xPos, (*iter)->yPos);
@@ -125,7 +125,7 @@ void acceptProc()
 
     uniqueID++;
 
-    wprintf(L"# [New User] SessionID: %lu | direction: RR | xPos: %d | yPos: %d | HP: %d\n", newPlayer->sessionID, newPlayer->xPos, newPlayer->yPos, newPlayer->HP);
+    printf("# [New User] SessionID: %lu | direction: RR | xPos: %d | yPos: %d | HP: %d\n", newPlayer->sessionID, newPlayer->xPos, newPlayer->yPos, newPlayer->HP);
 }
 
 void unicast(SESSION* p, HEADER* header, char* payload)
@@ -142,7 +142,6 @@ void unicast(SESSION* p, HEADER* header, char* payload)
     {
         printf("Unicast 링버퍼 가득참\n");
         disconnect(p);
-        serverShut = true;
         return;
     }
 
@@ -212,7 +211,6 @@ void readProc(SESSION* p)
     {
         printf("수신 링버퍼 가득참");
         disconnect(p);
-        serverShut = true;
         return;
     }
 
@@ -222,6 +220,11 @@ void readProc(SESSION* p)
     {
         if (GetLastError() != WSAEWOULDBLOCK)
         {
+            if (GetLastError() == WSAECONNRESET)
+            {
+                disconnect(p);
+                return;
+            }
             printf("%d", GetLastError());
             serverShut = true;
             return;
@@ -254,7 +257,6 @@ void readProc(SESSION* p)
         if (retval != sizeof(HEADER))
         {
             printf("[Read 헤더 Peek 에러] 요청: %llu 성공: %d\n", sizeof(HEADER), retval);
-            serverShut = true;
             break;
         }
         
@@ -270,20 +272,19 @@ void readProc(SESSION* p)
             break;
 
         // 헤더만큼 프론트 이동
-        p->readQ.Dequeue((char*)&header, sizeof(HEADER));
+        p->readQ.MoveFront(retval);
 
         char payload[100];
         retval = p->readQ.Dequeue(payload, header.p_size);
         if (retval != header.p_size)
         {
             printf("[Read 페이로드 디큐 에러] 요청: %lu 성공: %d\n", header.p_size, retval);
-            serverShut = true;
             break;
         }
 
         if (!packetProc(p, header.p_type, payload))
         {
-            wprintf(L"[packetProc() 에러]\n");
+            printf("[packetProc() 에러]\n");
             break;
         }
     }
