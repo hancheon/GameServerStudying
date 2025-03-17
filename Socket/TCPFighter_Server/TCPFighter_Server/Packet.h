@@ -1,33 +1,69 @@
-#pragma once
-#include "Protocol.h"
+#ifndef __PACKET__
+#define __PACKET__
 
-#define dfERROR_RANGE 50
-#define dfATTACK1_RANGE_X		80
-#define dfATTACK2_RANGE_X		90
-#define dfATTACK3_RANGE_X		100
-#define dfATTACK1_RANGE_Y		10
-#define dfATTACK2_RANGE_Y		10
-#define dfATTACK3_RANGE_Y		20
+#include <Windows.h>
+#define DEFUALT_BUFSIZE 1000
 
-#define DAMAGE1 3
-#define DAMAGE2 5
-#define dfPACKET_MOVE_STOP 8
+class Packet
+{
+public:
+	Packet();
+	Packet(int);
+	virtual ~Packet();
 
-// recv한 패킷 처리 함수
-bool packetProc(SESSION*, BYTE, const char*);
-bool packetProc_MOVE_START(SESSION*, const char*);
-bool packetProc_MOVE_STOP(SESSION*, const char*);
-bool packetProc_ATTACK1(SESSION*, const char*);
-bool packetProc_ATTACK2(SESSION*, const char*);
-bool packetProc_ATTACK3(SESSION*, const char*);
+	void Clear();
 
-// 패킷 생성 함수
-void createPacket_CREATE_MY_CHARACTER(HEADER*, char*, DWORD, BYTE, short, short, char);
-void createPacket_CREATE_OTHER_CHARACTER(HEADER*, char*, DWORD, BYTE, short, short, char);
-void createPacket_MOVE_START(HEADER*, char*, DWORD, BYTE, short, short);
-void createPacket_MOVE_STOP(HEADER*, char*, DWORD, BYTE, short, short);
-void createPacket_ATTACK1(HEADER*, char*, DWORD, BYTE, short, short);
-void createPacket_ATTACK2(HEADER*, char*, DWORD, BYTE, short, short);
-void createPacket_ATTACK3(HEADER*, char*, DWORD, BYTE, short, short);
-void createPacket_DAMAGE(HEADER*, char*, DWORD, DWORD, char);
-void createPacket_DELETE(HEADER*, char*, DWORD);
+	int GetBufferSize();
+	int GetDataSize();
+
+	// 버퍼 시작 주소 포인터 반환
+	char* GetBufferPtr();
+
+	// 데이터 직접 삽입 및 추출
+	int GetData(char*, int);
+	int PutData(char*, int);
+
+	// 이동한 사이즈 반환
+	int MoveWritePos(unsigned int);
+	int MoveReadPos(unsigned int);
+
+	// 넣기 연산자 오버로딩
+	Packet& operator=(Packet&);
+
+	Packet& operator<<(unsigned char);
+	Packet& operator<<(char);
+
+	Packet& operator<<(unsigned short);
+	Packet& operator<<(short);
+
+	Packet& operator<<(int);
+	Packet& operator<<(long);
+	Packet& operator<<(float);
+
+	Packet& operator<<(__int64);
+	Packet& operator<<(double);
+
+	// 빼기 연산자 오버로딩
+	Packet& operator>>(BYTE&);
+	Packet& operator>>(char&);
+
+	Packet& operator>>(WORD&);
+	Packet& operator>>(short&);
+
+	Packet& operator>>(int&);
+	Packet& operator>>(DWORD&);
+	Packet& operator>>(float&);
+
+	Packet& operator>>(__int64&);
+	Packet& operator>>(double&);
+
+private:
+	char* m_bufferPtr;
+	int m_bufferSize;
+	int m_dataSize;
+
+	int m_front;
+	int m_rear;
+};
+
+#endif

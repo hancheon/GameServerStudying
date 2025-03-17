@@ -1,8 +1,9 @@
 #include <iostream>
 #include "Network.h"
-#include "Packet.h"
+#include "PacketProc.h"
 #include "myList.h"
 #include "Contents.h"
+#include "Packet.h"
 
 extern SOCKET listen_sock;
 DWORD uniqueID = 0;
@@ -138,7 +139,7 @@ void unicast(SESSION* p, HEADER* header, char* payload)
         serverShut = true;
         return;
     }
-    else if (p->writeQ.GetFreeSize() == 0) // 처리 불가능한 데이터로 링버터 가득참
+    else if (p->writeQ.IsFull()) // 처리 불가능한 데이터로 링버터 가득참
     {
         printf("Unicast 링버퍼 가득참\n");
         disconnect(p);
@@ -173,7 +174,7 @@ void broadcast(SESSION* p, HEADER* header, char* payload)
     {
         if ((*iter) != p)
         {
-            if ((*iter)->writeQ.GetFreeSize() == 0) // 처리 불가능한 데이터 존재
+            if ((*iter)->writeQ.IsFull()) // 처리 불가능한 데이터 존재
             {
                 printf("Broadcast 링버퍼 가득참");
                 disconnect(*iter);
@@ -205,45 +206,13 @@ void readProc(SESSION* p)
         return;
 
     int retval;
-    char buffer[MAX_BUFSIZE];
 
-    if (p->readQ.GetFreeSize() == 0) // 처리 불가능한 데이터로 링버퍼 가득 참
+    if (p->readQ.IsFull()) // 처리 불가능한 데이터로 링버퍼 가득 참
     {
         printf("수신 링버퍼 가득참");
         disconnect(p);
         return;
     }
-
-    //// tcp 수신버퍼 -> 지역 버퍼
-    //retval = recv(p->sock, buffer, min(MAX_BUFSIZE, p->readQ.GetFreeSize()), 0); // 링버퍼에 넣을 수 있는 최대로 가져옴
-    //if (retval == SOCKET_ERROR)
-    //{
-    //    if (GetLastError() != WSAEWOULDBLOCK)
-    //    {
-    //        if (GetLastError() == WSAECONNRESET)
-    //        {
-    //            disconnect(p);
-    //            return;
-    //        }
-    //        printf("%d", GetLastError());
-    //        serverShut = true;
-    //        return;
-    //    }
-    //}
-    //else if (retval == 0)
-    //{
-    //    disconnect(p);
-    //    return;
-    //}
-
-    //// 지역 버퍼 -> 링버퍼
-    //int retval_enq = p->readQ.Enqueue(buffer, retval);
-    //if (retval_enq != retval)
-    //{
-    //    printf("[Read 인큐 에러] 요청: %d 성공: %d\n", retval, retval_enq);
-    //    serverShut = true;
-    //    return;
-    //}
 
     // tcp 수신버퍼 -> 링버퍼
     retval = recv(p->sock, p->readQ.GetRearPtr(), p->readQ.GetDirectEnqueueSize(), 0);
@@ -320,19 +289,23 @@ void writeProc(SESSION* p)
         return;
 
     int retval;
-    char buffer[MAX_BUFSIZE];
 
-    retval = p->writeQ.Dequeue(buffer, min(MAX_BUFSIZE, p->writeQ.GetUsedSize()));
-    retval = send(p->sock, buffer, retval, 0);
+    retval = send(p->sock, p->writeQ.GetFrontPtr(), p->writeQ.GetDirectDequeueSize(), 0);
     if (retval == SOCKET_ERROR)
     {
         if (GetLastError() != WSAEWOULDBLOCK)
         {
+            if (GetLastError() == WSAECONNRESET)
+            {
+                disconnect(p);
+                return;
+            }
             printf("%d", GetLastError());
             serverShut = true;
             return;
         }
     }
+    p->writeQ.MoveFront(retval);
 }
 
 void disconnect(SESSION* p)

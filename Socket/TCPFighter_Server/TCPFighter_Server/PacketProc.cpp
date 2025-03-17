@@ -1,0 +1,397 @@
+#include <iostream>
+#include <Windows.h>
+#include <cmath>
+#include "Session.h"
+#include "PacketProc.h"
+#include "Network.h"
+#include "myList.h"
+#include "Packet.h"
+
+extern myList<SESSION*> users;
+extern myList<SESSION*> disconnects;
+
+//====================================================================//
+// 받은 패킷 분류 함수
+//====================================================================//
+bool packetProc(SESSION* p, BYTE packet_type, Packet* payload)
+{
+	if (p == nullptr || payload == nullptr)
+	{
+		printf("유효하지 않은 유저 또는 페이로드 주소 이상\n");
+		return false;
+	}
+
+	switch (packet_type)
+	{
+	case dfPACKET_CS_MOVE_START:
+		return packetProc_MOVE_START(p, payload);
+	case dfPACKET_CS_MOVE_STOP:
+		return packetProc_MOVE_STOP(p, payload);
+	case dfPACKET_CS_ATTACK1:
+		return packetProc_ATTACK1(p, payload);
+	case dfPACKET_CS_ATTACK2:
+		return packetProc_ATTACK2(p, payload);
+	case dfPACKET_CS_ATTACK3:
+		return packetProc_ATTACK3(p, payload);
+	}
+
+	return false;
+}
+
+//====================================================================//
+// 분류된 패킷 처리 함수
+//====================================================================//
+bool packetProc_MOVE_START(SESSION* p, Packet* payload)
+{
+	DWORD sessionID;
+	BYTE direction;
+	short xPos;
+	short yPos;
+	char HP;
+
+	*payload >> sessionID >> direction >> xPos >> yPos >> HP;
+
+	if (abs(p->xPos - xPos) > dfERROR_RANGE || abs(p->yPos - yPos) > dfERROR_RANGE)
+	{
+		printf("Error: MOVE_START 좌표 허용 오차 초과\n");
+		printf("요청 xpos: %d ypos: %d | 서버 xpos: %d ypos: %d\n", xPos, yPos, p->xPos, p->yPos);
+		disconnect(p);
+		return false;
+	}
+
+	switch (p->action) // 시야 변경
+	{
+	case dfPACKET_MOVE_DIR_LL:
+	case dfPACKET_MOVE_DIR_LU:
+	case dfPACKET_MOVE_DIR_LD:
+		p->direction = dfPACKET_MOVE_DIR_LL;
+		break;
+	case dfPACKET_MOVE_DIR_RR:
+	case dfPACKET_MOVE_DIR_RU:
+	case dfPACKET_MOVE_DIR_RD:
+		p->direction = dfPACKET_MOVE_DIR_RR;
+		break;
+	}
+
+	HEADER header;
+	Packet sendPayload;
+	createPacket_MOVE_START(&header, &sendPayload, p->sessionID, p->action, p->xPos, p->yPos);
+	broadcast(p, &header, (char*)&sendPayload);
+
+	switch (p->action)
+	{
+	case dfPACKET_MOVE_DIR_LL:
+		printf("# [MOVE] SessionID: %d | direction: LL | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_LU:
+		printf("# [MOVE] SessionID: %d | direction: LU | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_UU:
+		printf("# [MOVE] SessionID: %d | direction: UU | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_RU:
+		printf("# [MOVE] SessionID: %d | direction: RU | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_RR:
+		printf("# [MOVE] SessionID: %d | direction: RR | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_RD:
+		printf("# [MOVE] SessionID: %d | direction: RD | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_DD:
+		printf("# [MOVE] SessionID: %d | direction: DD | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	case dfPACKET_MOVE_DIR_LD:
+		printf("# [MOVE] SessionID: %d | direction: LD | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+		break;
+	}
+
+	return true;
+}
+
+bool packetProc_MOVE_STOP(SESSION* p, Packet* payload)
+{
+	CS_MOVE_STOP* msg = (CS_MOVE_STOP*)payload;
+	if (abs(p->xPos - msg->xPos) > dfERROR_RANGE || abs(p->yPos - msg->yPos) > dfERROR_RANGE)
+	{
+		printf("Error: MOVE_STOP 좌표 허용 오차 초과\n");
+		printf("요청 xpos: %d ypos: %d | 서버 xpos: %d ypos: %d\n", msg->xPos, msg->yPos, p->xPos, p->yPos);
+		disconnect(p);
+		return false;
+	}
+	p->direction = msg->direction;
+	p->xPos = msg->xPos;
+	p->yPos = msg->yPos;
+	p->action = dfPACKET_MOVE_STOP;
+
+	HEADER header;
+	SC_MOVE_STOP newPayload;
+	createPacket_MOVE_STOP(&header, (char*)&newPayload, p->sessionID, p->direction, p->xPos, p->yPos);
+	broadcast(p, &header, (char*)&newPayload);
+
+	if (p->direction == dfPACKET_MOVE_DIR_LL)
+	{
+		printf("# [MOVE_STOP]  SessionID: %d | direction: LL | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+	}
+	else
+	{
+		printf("# [MOVE_STOP]  SessionID: %d | direction: RR | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
+	}
+
+	return true;
+}
+
+bool packetProc_ATTACK1(SESSION* p, Packet* payload)
+{
+	CS_ATTACK1* msg = (CS_ATTACK1*)payload;
+
+	// 공격 모션 지시
+	HEADER header;
+	SC_ATTACK1 sc_attack_payload;
+	createPacket_ATTACK1(&header, (char*)&sc_attack_payload, p->sessionID, p->direction, p->xPos, p->yPos);
+	broadcast(p, &header, (char*)&sc_attack_payload);
+
+	// 공격 판정 후 결과 통보
+	myList<SESSION*>::iterator iter;
+	for (iter = users.begin(); iter != users.end(); iter++)
+	{
+		if ((*iter) != p)
+		{
+			if (msg->direction == dfPACKET_MOVE_DIR_LL)
+			{
+				if ((msg->xPos - (*iter)->xPos > dfATTACK1_RANGE_X) || (msg->xPos - (*iter)->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK1_RANGE_Y)
+					continue;
+			}
+			else
+			{
+				if (((*iter)->xPos - msg->xPos > dfATTACK1_RANGE_X) || ((*iter)->xPos - msg->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK1_RANGE_Y)
+					continue;
+			}
+
+			(*iter)->HP = max((*iter)->HP - DAMAGE1, 0);
+
+			HEADER header;
+			SC_DAMAGE newPayload;
+			createPacket_DAMAGE(&header, (char*)&newPayload, p->sessionID, (*iter)->sessionID, (*iter)->HP);
+			broadcast(nullptr, &header, (char*)&newPayload);
+			printf("# [ATTACK1] AttackerID: %d | DemagedID: %d | HP: %d\n", p->sessionID, (*iter)->sessionID, (*iter)->HP);
+
+			if ((*iter)->HP <= 0)
+			{
+				disconnect((*iter));
+			}
+		}
+	}
+
+	return true;
+}
+
+bool packetProc_ATTACK2(SESSION* p, Packet* payload)
+{
+	CS_ATTACK2* msg = (CS_ATTACK2*)payload;
+
+	// 공격 모션 지시
+	HEADER header;
+	SC_ATTACK2 sc_attack_payload;
+	createPacket_ATTACK2(&header, (char*)&sc_attack_payload, p->sessionID, p->direction, p->xPos, p->yPos);
+	broadcast(p, &header, (char*)&sc_attack_payload);
+
+	myList<SESSION*>::iterator iter;
+	for (iter = users.begin(); iter != users.end(); iter++)
+	{
+		if ((*iter) != p)
+		{
+			if (msg->direction == dfPACKET_MOVE_DIR_LL)
+			{
+				if ((msg->xPos - (*iter)->xPos > dfATTACK2_RANGE_X) || (msg->xPos - (*iter)->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK2_RANGE_Y)
+					continue;
+			}
+			else
+			{
+				if (((*iter)->xPos - msg->xPos > dfATTACK2_RANGE_X) || ((*iter)->xPos - msg->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK2_RANGE_Y)
+					continue;
+			}
+
+			(*iter)->HP = max((*iter)->HP - DAMAGE1, 0);
+
+			HEADER header;
+			SC_DAMAGE newPayload;
+			createPacket_DAMAGE(&header, (char*)&newPayload, p->sessionID, (*iter)->sessionID, (*iter)->HP);
+			broadcast(nullptr, &header, (char*)&newPayload);
+			printf("# [ATTACK2] AttackerID: %d | DemagedID: %d | HP: %d\n", p->sessionID, (*iter)->sessionID, (*iter)->HP);
+			
+			if ((*iter)->HP <= 0)
+			{
+				disconnect((*iter));
+			}
+		}
+	}
+
+	return true;
+}
+
+bool packetProc_ATTACK3(SESSION* p, Packet* payload)
+{
+	CS_ATTACK3* msg = (CS_ATTACK3*)payload;
+
+	// 공격 모션 지시
+	HEADER header;
+	SC_ATTACK3 sc_attack_payload;
+	createPacket_ATTACK3(&header, (char*)&sc_attack_payload, p->sessionID, p->direction, p->xPos, p->yPos);
+	broadcast(p, &header, (char*)&sc_attack_payload);
+
+	// 공격 판정 후 결과 통보
+	myList<SESSION*>::iterator iter;
+	for (iter = users.begin(); iter != users.end(); iter++)
+	{
+		if ((*iter) != p)
+		{
+			if (msg->direction == dfPACKET_MOVE_DIR_LL)
+			{
+				if ((msg->xPos - (*iter)->xPos > dfATTACK3_RANGE_X) || (msg->xPos - (*iter)->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK3_RANGE_Y)
+					continue;
+			}
+			else
+			{
+				if (((*iter)->xPos - msg->xPos > dfATTACK3_RANGE_X) || ((*iter)->xPos - msg->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK3_RANGE_Y)
+					continue;
+			}
+
+			if ((*iter)->HP > 0)
+			{
+				(*iter)->HP = max((*iter)->HP - DAMAGE2, 0);
+			}
+
+			HEADER header;
+			SC_DAMAGE newPayload;
+			createPacket_DAMAGE(&header, (char*)&newPayload, p->sessionID, (*iter)->sessionID, (*iter)->HP);
+			broadcast(nullptr, &header, (char*)&newPayload);
+			printf("# [ATTACK3] AttackerID: %d | DemagedID: %d | HP: %d\n", p->sessionID, (*iter)->sessionID, (*iter)->HP);
+
+			if ((*iter)->HP <= 0)
+			{
+				disconnect((*iter));
+			}
+		}
+	}
+
+	return true;
+}
+
+//====================================================================//
+// 패킷 생성 함수
+//====================================================================//
+void createPacket_CREATE_MY_CHARACTER(HEADER* header, Packet* payload, DWORD ID, BYTE direction, short xPos, short yPos, char HP)
+{
+	header->p_code = PACKET_CODE;
+	header->p_size = sizeof(SC_CREATE_MY_CHARACTER);
+	header->p_type = dfPACKET_SC_CREATE_MY_CHARACTER;
+
+	SC_CREATE_MY_CHARACTER* msg = (SC_CREATE_MY_CHARACTER*)payload;
+	msg->ID = ID;
+	msg->direction = direction;
+	msg->xPos = xPos;
+	msg->yPos = yPos;
+	msg->HP = HP;
+}
+
+void createPacket_CREATE_OTHER_CHARACTER(HEADER* header, Packet* payload, DWORD ID, BYTE direction, short xPos, short yPos, char HP)
+{
+	header->p_code = PACKET_CODE;
+	header->p_size = sizeof(SC_CREATE_OTHER_CHARACTER);
+	header->p_type = dfPACKET_SC_CREATE_OTHER_CHARACTER;
+
+	SC_CREATE_OTHER_CHARACTER* msg = (SC_CREATE_OTHER_CHARACTER*)payload;
+	msg->ID = ID;
+	msg->direction = direction;
+	msg->xPos = xPos;
+	msg->yPos = yPos;
+	msg->HP = HP;
+}
+
+void createPacket_MOVE_START(HEADER* header, Packet* payload, DWORD ID, BYTE action, short xPos, short yPos)
+{
+	header->p_code = PACKET_CODE;
+	header->p_size = sizeof(SC_MOVE_START);
+	header->p_type = dfPACKET_SC_MOVE_START;
+
+	SC_MOVE_START* msg = (SC_MOVE_START*)payload;
+	msg->ID = ID;
+	msg->direction = action;
+	msg->xPos = xPos;
+	msg->yPos = yPos;
+}
+
+void createPacket_MOVE_STOP(HEADER* header, Packet* payload, DWORD ID, BYTE direction, short xPos, short yPos)
+{
+	header->p_code = PACKET_CODE;
+	header->p_size = sizeof(SC_MOVE_STOP);
+	header->p_type = dfPACKET_SC_MOVE_STOP;
+
+	SC_MOVE_STOP* msg = (SC_MOVE_STOP*)payload;
+	msg->ID = ID;
+	msg->direction = direction;
+	msg->xPos = xPos;
+	msg->yPos = yPos;
+}
+
+void createPacket_ATTACK1(HEADER* header, Packet* payload, DWORD ID, BYTE direction, short xPos, short yPos)
+{
+	header->p_code = PACKET_CODE;
+	header->p_size = sizeof(SC_ATTACK1);
+	header->p_type = dfPACKET_SC_ATTACK1;
+
+	SC_ATTACK1* msg = (SC_ATTACK1*)payload;
+	msg->ID = ID;
+	msg->direction = direction;
+	msg->xPos = xPos;
+	msg->yPos = yPos;
+}
+
+void createPacket_ATTACK2(HEADER* header, Packet* payload, DWORD ID, BYTE direction, short xPos, short yPos)
+{
+	header->p_code = PACKET_CODE;
+	header->p_size = sizeof(SC_ATTACK2);
+	header->p_type = dfPACKET_SC_ATTACK2;
+
+	SC_ATTACK2* msg = (SC_ATTACK2*)payload;
+	msg->ID = ID;
+	msg->direction = direction;
+	msg->xPos = xPos;
+	msg->yPos = yPos;
+}
+
+void createPacket_ATTACK3(HEADER* header, Packet* payload, DWORD ID, BYTE direction, short xPos, short yPos)
+{
+	header->p_code = PACKET_CODE;
+	header->p_size = sizeof(SC_ATTACK3);
+	header->p_type = dfPACKET_SC_ATTACK3;
+
+	SC_ATTACK3* msg = (SC_ATTACK3*)payload;
+	msg->ID = ID;
+	msg->direction = direction;
+	msg->xPos = xPos;
+	msg->yPos = yPos;
+}
+
+void createPacket_DAMAGE(HEADER* header, Packet* payload, DWORD attackerID, DWORD damagedID, char HP)
+{
+	header->p_code = PACKET_CODE;
+	header->p_size = sizeof(SC_DAMAGE);
+	header->p_type = dfPACKET_SC_DAMAGE;
+
+	SC_DAMAGE* msg = (SC_DAMAGE*)payload;
+	msg->attackerID = attackerID;
+	msg->damagedID = damagedID;
+	msg->remainHP = HP;
+}
+
+void createPacket_DELETE(HEADER* header, Packet* payload, DWORD ID)
+{
+	header->p_code = PACKET_CODE;
+	header->p_size = sizeof(SC_DELETE_CHARACTER);
+	header->p_type = dfPACKET_SC_DELETE_CHARACTER;
+
+	SC_DELETE_CHARACTER* msg = (SC_DELETE_CHARACTER*)payload;
+	msg->ID = ID;
+}

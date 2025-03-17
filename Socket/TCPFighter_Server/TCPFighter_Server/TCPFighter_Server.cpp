@@ -5,7 +5,7 @@
 #include "Protocol.h"
 #include "Session.h"
 #include "Network.h"
-#include "Packet.h"
+#include "PacketProc.h"
 #include "Contents.h"
 #include "myList.h"
 #pragma comment(lib, "Winmm")

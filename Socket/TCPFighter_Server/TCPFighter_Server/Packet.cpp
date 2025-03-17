@@ -1,392 +1,218 @@
-#include <iostream>
-#include <Windows.h>
-#include <cmath>
-#include "Session.h"
+癤�#include <iostream>
 #include "Packet.h"
-#include "Network.h"
-#include "myList.h"
 
-extern myList<SESSION*> users;
-extern myList<SESSION*> disconnects;
-
-//====================================================================//
-// 받은 패킷 분류 함수
-//====================================================================//
-bool packetProc(SESSION* p, BYTE packet_type, const char* payload)
+Packet::Packet() : m_bufferSize(DEFUALT_BUFSIZE), m_dataSize(0), m_front(-1), m_rear(-1)
 {
-	if (p == nullptr || payload == nullptr)
-	{
-		printf("유효하지 않은 유저 또는 페이로드 주소 이상\n");
-		return false;
-	}
-
-	switch (packet_type)
-	{
-	case dfPACKET_CS_MOVE_START:
-		return packetProc_MOVE_START(p, payload);
-	case dfPACKET_CS_MOVE_STOP:
-		return packetProc_MOVE_STOP(p, payload);
-	case dfPACKET_CS_ATTACK1:
-		return packetProc_ATTACK1(p, payload);
-	case dfPACKET_CS_ATTACK2:
-		return packetProc_ATTACK2(p, payload);
-	case dfPACKET_CS_ATTACK3:
-		return packetProc_ATTACK3(p, payload);
-	}
-
-	return false;
+	m_bufferPtr = new char[m_bufferSize];
 }
 
-//====================================================================//
-// 분류된 패킷 처리 함수
-//====================================================================//
-bool packetProc_MOVE_START(SESSION* p, const char* payload)
+Packet::Packet(int size) : m_bufferSize(size), m_dataSize(0), m_front(-1), m_rear(-1)
 {
-	CS_MOVE_START* msg = (CS_MOVE_START*)payload;
-	if (abs(p->xPos - msg->xPos) > dfERROR_RANGE || abs(p->yPos - msg->yPos) > dfERROR_RANGE)
-	{
-		printf("Error: MOVE_START 좌표 허용 오차 초과\n");
-		printf("요청 xpos: %d ypos: %d | 서버 xpos: %d ypos: %d\n", msg->xPos, msg->yPos, p->xPos, p->yPos);
-		disconnect(p);
-		return false;
-	}
-	p->xPos = msg->xPos;
-	p->yPos = msg->yPos;
-	p->action = msg->direction;
-
-	switch (msg->direction) // 시야 변경
-	{
-	case dfPACKET_MOVE_DIR_LL:
-	case dfPACKET_MOVE_DIR_LU:
-	case dfPACKET_MOVE_DIR_LD:
-		p->direction = dfPACKET_MOVE_DIR_LL;
-		break;
-	case dfPACKET_MOVE_DIR_RR:
-	case dfPACKET_MOVE_DIR_RU:
-	case dfPACKET_MOVE_DIR_RD:
-		p->direction = dfPACKET_MOVE_DIR_RR;
-		break;
-	}
-
-	HEADER header;
-	SC_MOVE_START newPayload;
-	createPacket_MOVE_START(&header, (char*)&newPayload, p->sessionID, p->action, p->xPos, p->yPos);
-	broadcast(p, &header, (char*)&newPayload);
-
-	switch (p->action)
-	{
-	case dfPACKET_MOVE_DIR_LL:
-		printf("# [MOVE] SessionID: %d | direction: LL | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
-		break;
-	case dfPACKET_MOVE_DIR_LU:
-		printf("# [MOVE] SessionID: %d | direction: LU | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
-		break;
-	case dfPACKET_MOVE_DIR_UU:
-		printf("# [MOVE] SessionID: %d | direction: UU | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
-		break;
-	case dfPACKET_MOVE_DIR_RU:
-		printf("# [MOVE] SessionID: %d | direction: RU | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
-		break;
-	case dfPACKET_MOVE_DIR_RR:
-		printf("# [MOVE] SessionID: %d | direction: RR | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
-		break;
-	case dfPACKET_MOVE_DIR_RD:
-		printf("# [MOVE] SessionID: %d | direction: RD | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
-		break;
-	case dfPACKET_MOVE_DIR_DD:
-		printf("# [MOVE] SessionID: %d | direction: DD | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
-		break;
-	case dfPACKET_MOVE_DIR_LD:
-		printf("# [MOVE] SessionID: %d | direction: LD | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
-		break;
-	}
-
-	return true;
+	m_bufferPtr = new char[m_bufferSize];
 }
 
-bool packetProc_MOVE_STOP(SESSION* p, const char* payload)
+Packet::~Packet()
 {
-	CS_MOVE_STOP* msg = (CS_MOVE_STOP*)payload;
-	if (abs(p->xPos - msg->xPos) > dfERROR_RANGE || abs(p->yPos - msg->yPos) > dfERROR_RANGE)
-	{
-		printf("Error: MOVE_STOP 좌표 허용 오차 초과\n");
-		printf("요청 xpos: %d ypos: %d | 서버 xpos: %d ypos: %d\n", msg->xPos, msg->yPos, p->xPos, p->yPos);
-		disconnect(p);
-		return false;
-	}
-	p->direction = msg->direction;
-	p->xPos = msg->xPos;
-	p->yPos = msg->yPos;
-	p->action = dfPACKET_MOVE_STOP;
-
-	HEADER header;
-	SC_MOVE_STOP newPayload;
-	createPacket_MOVE_STOP(&header, (char*)&newPayload, p->sessionID, p->direction, p->xPos, p->yPos);
-	broadcast(p, &header, (char*)&newPayload);
-
-	if (p->direction == dfPACKET_MOVE_DIR_LL)
-	{
-		printf("# [MOVE_STOP]  SessionID: %d | direction: LL | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
-	}
-	else
-	{
-		printf("# [MOVE_STOP]  SessionID: %d | direction: RR | xPos: %d | yPos: %d\n", p->sessionID, p->xPos, p->yPos);
-	}
-
-	return true;
+	delete[] m_bufferPtr;
 }
 
-bool packetProc_ATTACK1(SESSION* p, const char* payload)
+void Packet::Clear()
 {
-	CS_ATTACK1* msg = (CS_ATTACK1*)payload;
-
-	// 공격 모션 지시
-	HEADER header;
-	SC_ATTACK1 sc_attack_payload;
-	createPacket_ATTACK1(&header, (char*)&sc_attack_payload, p->sessionID, p->direction, p->xPos, p->yPos);
-	broadcast(p, &header, (char*)&sc_attack_payload);
-
-	// 공격 판정 후 결과 통보
-	myList<SESSION*>::iterator iter;
-	for (iter = users.begin(); iter != users.end(); iter++)
-	{
-		if ((*iter) != p)
-		{
-			if (msg->direction == dfPACKET_MOVE_DIR_LL)
-			{
-				if ((msg->xPos - (*iter)->xPos > dfATTACK1_RANGE_X) || (msg->xPos - (*iter)->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK1_RANGE_Y)
-					continue;
-			}
-			else
-			{
-				if (((*iter)->xPos - msg->xPos > dfATTACK1_RANGE_X) || ((*iter)->xPos - msg->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK1_RANGE_Y)
-					continue;
-			}
-
-			(*iter)->HP = max((*iter)->HP - DAMAGE1, 0);
-
-			HEADER header;
-			SC_DAMAGE newPayload;
-			createPacket_DAMAGE(&header, (char*)&newPayload, p->sessionID, (*iter)->sessionID, (*iter)->HP);
-			broadcast(nullptr, &header, (char*)&newPayload);
-			printf("# [ATTACK1] AttackerID: %d | DemagedID: %d | HP: %d\n", p->sessionID, (*iter)->sessionID, (*iter)->HP);
-
-			if ((*iter)->HP <= 0)
-			{
-				disconnect((*iter));
-			}
-		}
-	}
-
-	return true;
+	m_front = m_rear = -1;
+	m_dataSize = 0;
 }
 
-bool packetProc_ATTACK2(SESSION* p, const char* payload)
+int Packet::GetBufferSize()
 {
-	CS_ATTACK2* msg = (CS_ATTACK2*)payload;
-
-	// 공격 모션 지시
-	HEADER header;
-	SC_ATTACK2 sc_attack_payload;
-	createPacket_ATTACK2(&header, (char*)&sc_attack_payload, p->sessionID, p->direction, p->xPos, p->yPos);
-	broadcast(p, &header, (char*)&sc_attack_payload);
-
-	myList<SESSION*>::iterator iter;
-	for (iter = users.begin(); iter != users.end(); iter++)
-	{
-		if ((*iter) != p)
-		{
-			if (msg->direction == dfPACKET_MOVE_DIR_LL)
-			{
-				if ((msg->xPos - (*iter)->xPos > dfATTACK2_RANGE_X) || (msg->xPos - (*iter)->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK2_RANGE_Y)
-					continue;
-			}
-			else
-			{
-				if (((*iter)->xPos - msg->xPos > dfATTACK2_RANGE_X) || ((*iter)->xPos - msg->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK2_RANGE_Y)
-					continue;
-			}
-
-			(*iter)->HP = max((*iter)->HP - DAMAGE1, 0);
-
-			HEADER header;
-			SC_DAMAGE newPayload;
-			createPacket_DAMAGE(&header, (char*)&newPayload, p->sessionID, (*iter)->sessionID, (*iter)->HP);
-			broadcast(nullptr, &header, (char*)&newPayload);
-			printf("# [ATTACK2] AttackerID: %d | DemagedID: %d | HP: %d\n", p->sessionID, (*iter)->sessionID, (*iter)->HP);
-			
-			if ((*iter)->HP <= 0)
-			{
-				disconnect((*iter));
-			}
-		}
-	}
-
-	return true;
+	return m_bufferSize;
 }
 
-bool packetProc_ATTACK3(SESSION* p, const char* payload)
+int Packet::GetDataSize()
 {
-	CS_ATTACK3* msg = (CS_ATTACK3*)payload;
-
-	// 공격 모션 지시
-	HEADER header;
-	SC_ATTACK3 sc_attack_payload;
-	createPacket_ATTACK3(&header, (char*)&sc_attack_payload, p->sessionID, p->direction, p->xPos, p->yPos);
-	broadcast(p, &header, (char*)&sc_attack_payload);
-
-	// 공격 판정 후 결과 통보
-	myList<SESSION*>::iterator iter;
-	for (iter = users.begin(); iter != users.end(); iter++)
-	{
-		if ((*iter) != p)
-		{
-			if (msg->direction == dfPACKET_MOVE_DIR_LL)
-			{
-				if ((msg->xPos - (*iter)->xPos > dfATTACK3_RANGE_X) || (msg->xPos - (*iter)->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK3_RANGE_Y)
-					continue;
-			}
-			else
-			{
-				if (((*iter)->xPos - msg->xPos > dfATTACK3_RANGE_X) || ((*iter)->xPos - msg->xPos < 0) || abs((*iter)->yPos - msg->yPos) > dfATTACK3_RANGE_Y)
-					continue;
-			}
-
-			if ((*iter)->HP > 0)
-			{
-				(*iter)->HP = max((*iter)->HP - DAMAGE2, 0);
-			}
-
-			HEADER header;
-			SC_DAMAGE newPayload;
-			createPacket_DAMAGE(&header, (char*)&newPayload, p->sessionID, (*iter)->sessionID, (*iter)->HP);
-			broadcast(nullptr, &header, (char*)&newPayload);
-			printf("# [ATTACK3] AttackerID: %d | DemagedID: %d | HP: %d\n", p->sessionID, (*iter)->sessionID, (*iter)->HP);
-
-			if ((*iter)->HP <= 0)
-			{
-				disconnect((*iter));
-			}
-		}
-	}
-
-	return true;
+	return m_dataSize;
 }
 
-//====================================================================//
-// 패킷 생성 함수
-//====================================================================//
-void createPacket_CREATE_MY_CHARACTER(HEADER* header, char* payload, DWORD ID, BYTE direction, short xPos, short yPos, char HP)
+char* Packet::GetBufferPtr()
 {
-	header->p_code = PACKET_CODE;
-	header->p_size = sizeof(SC_CREATE_MY_CHARACTER);
-	header->p_type = dfPACKET_SC_CREATE_MY_CHARACTER;
-
-	SC_CREATE_MY_CHARACTER* msg = (SC_CREATE_MY_CHARACTER*)payload;
-	msg->ID = ID;
-	msg->direction = direction;
-	msg->xPos = xPos;
-	msg->yPos = yPos;
-	msg->HP = HP;
+	return m_bufferPtr;
 }
 
-void createPacket_CREATE_OTHER_CHARACTER(HEADER* header, char* payload, DWORD ID, BYTE direction, short xPos, short yPos, char HP)
+int Packet::PutData(char* srcData, int size)
 {
-	header->p_code = PACKET_CODE;
-	header->p_size = sizeof(SC_CREATE_OTHER_CHARACTER);
-	header->p_type = dfPACKET_SC_CREATE_OTHER_CHARACTER;
-
-	SC_CREATE_OTHER_CHARACTER* msg = (SC_CREATE_OTHER_CHARACTER*)payload;
-	msg->ID = ID;
-	msg->direction = direction;
-	msg->xPos = xPos;
-	msg->yPos = yPos;
-	msg->HP = HP;
+	memcpy(m_bufferPtr + m_rear + 1, srcData, size);
+	m_rear = (m_rear + size) % m_bufferSize;
+	m_dataSize += size;
+	return size;
 }
 
-void createPacket_MOVE_START(HEADER* header, char* payload, DWORD ID, BYTE action, short xPos, short yPos)
+int Packet::GetData(char* desData, int size)
 {
-	header->p_code = PACKET_CODE;
-	header->p_size = sizeof(SC_MOVE_START);
-	header->p_type = dfPACKET_SC_MOVE_START;
-
-	SC_MOVE_START* msg = (SC_MOVE_START*)payload;
-	msg->ID = ID;
-	msg->direction = action;
-	msg->xPos = xPos;
-	msg->yPos = yPos;
+	memcpy(desData, m_bufferPtr + m_front + 1, size);
+	m_front = (m_front + size) % m_bufferSize;
+	m_dataSize -= size;
+	return size;
 }
 
-void createPacket_MOVE_STOP(HEADER* header, char* payload, DWORD ID, BYTE direction, short xPos, short yPos)
+int Packet::MoveWritePos(unsigned int size)
 {
-	header->p_code = PACKET_CODE;
-	header->p_size = sizeof(SC_MOVE_STOP);
-	header->p_type = dfPACKET_SC_MOVE_STOP;
-
-	SC_MOVE_STOP* msg = (SC_MOVE_STOP*)payload;
-	msg->ID = ID;
-	msg->direction = direction;
-	msg->xPos = xPos;
-	msg->yPos = yPos;
+	m_rear = (m_rear + size) % m_bufferSize;
+	m_dataSize += size;
+	return size;
 }
 
-void createPacket_ATTACK1(HEADER* header, char* payload, DWORD ID, BYTE direction, short xPos, short yPos)
+int Packet::MoveReadPos(unsigned int size)
 {
-	header->p_code = PACKET_CODE;
-	header->p_size = sizeof(SC_ATTACK1);
-	header->p_type = dfPACKET_SC_ATTACK1;
-
-	SC_ATTACK1* msg = (SC_ATTACK1*)payload;
-	msg->ID = ID;
-	msg->direction = direction;
-	msg->xPos = xPos;
-	msg->yPos = yPos;
+	m_front = (m_front + size) % m_bufferSize;
+	m_dataSize -= size;
+	return size;
 }
 
-void createPacket_ATTACK2(HEADER* header, char* payload, DWORD ID, BYTE direction, short xPos, short yPos)
+Packet& Packet::operator=(Packet& srcPacket)
 {
-	header->p_code = PACKET_CODE;
-	header->p_size = sizeof(SC_ATTACK2);
-	header->p_type = dfPACKET_SC_ATTACK2;
-
-	SC_ATTACK2* msg = (SC_ATTACK2*)payload;
-	msg->ID = ID;
-	msg->direction = direction;
-	msg->xPos = xPos;
-	msg->yPos = yPos;
+	memcpy(m_bufferPtr, &srcPacket, srcPacket.GetDataSize());
+	return *this;
 }
 
-void createPacket_ATTACK3(HEADER* header, char* payload, DWORD ID, BYTE direction, short xPos, short yPos)
+Packet& Packet::operator<<(unsigned char value)
 {
-	header->p_code = PACKET_CODE;
-	header->p_size = sizeof(SC_ATTACK3);
-	header->p_type = dfPACKET_SC_ATTACK3;
-
-	SC_ATTACK3* msg = (SC_ATTACK3*)payload;
-	msg->ID = ID;
-	msg->direction = direction;
-	msg->xPos = xPos;
-	msg->yPos = yPos;
+	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(unsigned char));
+	m_rear = (m_rear + sizeof(unsigned char)) % m_bufferSize;
+	m_dataSize += sizeof(unsigned char);
+	return *this;
 }
 
-void createPacket_DAMAGE(HEADER* header, char* payload, DWORD attackerID, DWORD damagedID, char HP)
+Packet& Packet::operator<<(char value)
 {
-	header->p_code = PACKET_CODE;
-	header->p_size = sizeof(SC_DAMAGE);
-	header->p_type = dfPACKET_SC_DAMAGE;
-
-	SC_DAMAGE* msg = (SC_DAMAGE*)payload;
-	msg->attackerID = attackerID;
-	msg->damagedID = damagedID;
-	msg->remainHP = HP;
+	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(char));
+	m_rear = (m_rear + sizeof(char)) % m_bufferSize;
+	m_dataSize += sizeof(char);
+	return *this;
 }
 
-void createPacket_DELETE(HEADER* header, char* payload, DWORD ID)
+Packet& Packet::operator<<(unsigned short value)
 {
-	header->p_code = PACKET_CODE;
-	header->p_size = sizeof(SC_DELETE_CHARACTER);
-	header->p_type = dfPACKET_SC_DELETE_CHARACTER;
+	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(unsigned short));
+	m_rear = (m_rear + sizeof(unsigned short)) % m_bufferSize;
+	m_dataSize += sizeof(unsigned short);
+	return *this;
+}
 
-	SC_DELETE_CHARACTER* msg = (SC_DELETE_CHARACTER*)payload;
-	msg->ID = ID;
+Packet& Packet::operator<<(short value)
+{
+	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(short));
+	m_rear = (m_rear + sizeof(short)) % m_bufferSize;
+	m_dataSize += sizeof(short);
+	return *this;
+}
+
+Packet& Packet::operator<<(int value)
+{
+	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(int));
+	m_rear = (m_rear + sizeof(int)) % m_bufferSize;
+	m_dataSize += sizeof(int);
+	return *this;
+}
+
+Packet& Packet::operator<<(long value)
+{
+	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(long));
+	m_rear = (m_rear + sizeof(long)) % m_bufferSize;
+	m_dataSize += sizeof(long);
+	return *this;
+}
+
+Packet& Packet::operator<<(float value)
+{
+	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(float));
+	m_rear = (m_rear + sizeof(float)) % m_bufferSize;
+	m_dataSize += sizeof(float);
+	return *this;
+}
+
+Packet& Packet::operator<<(__int64 value)
+{
+	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(__int64));
+	m_rear = (m_rear + sizeof(__int64)) % m_bufferSize;
+	m_dataSize += sizeof(__int64);
+	return *this;
+}
+
+Packet& Packet::operator<<(double value)
+{
+	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(double));
+	m_rear = (m_rear + sizeof(double)) % m_bufferSize;
+	m_dataSize += sizeof(double);
+	return *this;
+}
+
+Packet& Packet::operator>>(BYTE& value)
+{
+	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(BYTE));
+	m_front = (m_front + sizeof(BYTE)) % m_bufferSize;
+	m_dataSize -= sizeof(BYTE);
+	return *this;
+}
+
+Packet& Packet::operator>>(char& value)
+{
+	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(char));
+	m_front = (m_front + sizeof(char)) % m_bufferSize;
+	m_dataSize -= sizeof(char);
+	return *this;
+}
+
+Packet& Packet::operator>>(WORD& value)
+{
+	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(WORD));
+	m_front = (m_front + sizeof(WORD)) % m_bufferSize;
+	m_dataSize -= sizeof(WORD);
+	return *this;
+}
+
+Packet& Packet::operator>>(short& value)
+{
+	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(short));
+	m_front = (m_front + sizeof(short)) % m_bufferSize;
+	m_dataSize -= sizeof(short);
+	return *this;
+}
+
+Packet& Packet::operator>>(int& value)
+{
+	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(int));
+	m_front = (m_front + sizeof(int)) % m_bufferSize;
+	m_dataSize -= sizeof(int);
+	return *this;
+}
+
+Packet& Packet::operator>>(DWORD& value)
+{
+	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(DWORD));
+	m_front = (m_front + sizeof(DWORD)) % m_bufferSize;
+	m_dataSize -= sizeof(DWORD);
+	return *this;
+}
+
+Packet& Packet::operator>>(float& value)
+{
+	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(float));
+	m_front = (m_front + sizeof(float)) % m_bufferSize;
+	m_dataSize -= sizeof(float);
+	return *this;
+}
+
+Packet& Packet::operator>>(__int64& value)
+{
+	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(__int64));
+	m_front = (m_front + sizeof(__int64)) % m_bufferSize;
+	m_dataSize -= sizeof(__int64);
+	return *this;
+}
+
+Packet& Packet::operator>>(double& value)
+{
+	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(double));
+	m_front = (m_front + sizeof(double)) % m_bufferSize;
+	m_dataSize -= sizeof(double);
+	return *this;
 }
