@@ -52,10 +52,10 @@ int wmain()
 	packet[9] = 0x11;
 
 	// 브로드캐스팅 주소 설정
-	SOCKADDR_IN addr;
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+	SOCKADDR_IN servAddr;
+	memset(&servAddr, 0, sizeof(servAddr));
+	servAddr.sin_family = AF_INET;
+	servAddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
 
 	// 서버의 주소 받을 구조체
 	SOCKADDR_IN roomAddr;
@@ -63,27 +63,31 @@ int wmain()
 	wchar_t roomInfo[BUF_SIZE];
 	wchar_t ip[16];
 
+	// select 타임아웃 시간 지정
 	timeval time;
 	time.tv_sec = 0;
-	time.tv_usec = 200000;
+	time.tv_usec = 200000; //200ms
 
 	FD_SET rSet;
 
 	for (int i = 0; i <= 100; i++)
 	{
+		// 읽기 셋 초기화
 		FD_ZERO(&rSet);
+		// UDP 통신용 소켓 읽기 셋 등록 -> 해당 소켓에 읽을 데이터 들어오면 반응
 		FD_SET(sock, &rSet);
 
-		addr.sin_port = htons(10000 + i);
+		servAddr.sin_port = htons(10000 + i);
 
-		retval = sendto(sock, packet, PROTOCOL_PACKETSIZE, 0, (SOCKADDR*)&addr, sizeof(addr));
+		// 프로토콜 패킷 로컬에 브로드 캐스팅으로 뿌리기
+		retval = sendto(sock, packet, PROTOCOL_PACKETSIZE, 0, (SOCKADDR*)&servAddr, sizeof(servAddr));
 		if (retval == SOCKET_ERROR)
 		{
 			printf("%d\n", GetLastError());
 			return -1;
 		}
-		printf("%d 바이트 전송\n", retval);
-
+		
+		// 응답 확인용 select 함수 실행
 		retval = select(0, &rSet, nullptr, nullptr, &time);
 		if (retval == SOCKET_ERROR)
 		{
