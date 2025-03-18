@@ -27,17 +27,17 @@ public:
 	int MoveWritePos(unsigned int);
 	int MoveReadPos(unsigned int);
 
-	// 넣기 연산자 오버로딩
 	Packet& operator=(Packet&);
 
-	Packet& operator<<(unsigned char);
+	// 넣기 연산자 오버로딩
+	Packet& operator<<(BYTE);
 	Packet& operator<<(char);
 
-	Packet& operator<<(unsigned short);
+	Packet& operator<<(WORD);
 	Packet& operator<<(short);
 
+	Packet& operator<<(DWORD);
 	Packet& operator<<(int);
-	Packet& operator<<(long);
 	Packet& operator<<(float);
 
 	Packet& operator<<(__int64);
@@ -50,8 +50,8 @@ public:
 	Packet& operator>>(WORD&);
 	Packet& operator>>(short&);
 
-	Packet& operator>>(int&);
 	Packet& operator>>(DWORD&);
+	Packet& operator>>(int&);
 	Packet& operator>>(float&);
 
 	Packet& operator>>(__int64&);

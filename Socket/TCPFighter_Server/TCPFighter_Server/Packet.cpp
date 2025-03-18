@@ -18,7 +18,8 @@ Packet::~Packet()
 
 void Packet::Clear()
 {
-	m_front = m_rear = -1;
+	m_front = -1;
+	m_rear = -1;
 	m_dataSize = 0;
 }
 
@@ -105,19 +106,19 @@ Packet& Packet::operator<<(short value)
 	return *this;
 }
 
+Packet& Packet::operator<<(DWORD value)
+{
+	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(long));
+	m_rear = (m_rear + sizeof(long)) % m_bufferSize;
+	m_dataSize += sizeof(long);
+	return *this;
+}
+
 Packet& Packet::operator<<(int value)
 {
 	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(int));
 	m_rear = (m_rear + sizeof(int)) % m_bufferSize;
 	m_dataSize += sizeof(int);
-	return *this;
-}
-
-Packet& Packet::operator<<(long value)
-{
-	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(long));
-	m_rear = (m_rear + sizeof(long)) % m_bufferSize;
-	m_dataSize += sizeof(long);
 	return *this;
 }
 
@@ -177,19 +178,19 @@ Packet& Packet::operator>>(short& value)
 	return *this;
 }
 
-Packet& Packet::operator>>(int& value)
-{
-	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(int));
-	m_front = (m_front + sizeof(int)) % m_bufferSize;
-	m_dataSize -= sizeof(int);
-	return *this;
-}
-
 Packet& Packet::operator>>(DWORD& value)
 {
 	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(DWORD));
 	m_front = (m_front + sizeof(DWORD)) % m_bufferSize;
 	m_dataSize -= sizeof(DWORD);
+	return *this;
+}
+
+Packet& Packet::operator>>(int& value)
+{
+	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(int));
+	m_front = (m_front + sizeof(int)) % m_bufferSize;
+	m_dataSize -= sizeof(int);
 	return *this;
 }
 

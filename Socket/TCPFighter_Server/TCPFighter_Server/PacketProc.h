@@ -12,7 +12,6 @@
 
 #define DAMAGE1 3
 #define DAMAGE2 5
-#define dfPACKET_MOVE_STOP 8
 
 // recv한 패킷 처리 함수
 bool packetProc(SESSION*, BYTE, Packet*);
@@ -23,12 +22,12 @@ bool packetProc_ATTACK2(SESSION*, Packet*);
 bool packetProc_ATTACK3(SESSION*, Packet*);
 
 // 패킷 생성 함수
-void createPacket_CREATE_MY_CHARACTER(HEADER*, Packet*, DWORD, BYTE, short, short, char);
-void createPacket_CREATE_OTHER_CHARACTER(HEADER*, Packet*, DWORD, BYTE, short, short, char);
-void createPacket_MOVE_START(HEADER*, Packet*, DWORD, BYTE, short, short);
-void createPacket_MOVE_STOP(HEADER*, Packet*, DWORD, BYTE, short, short);
-void createPacket_ATTACK1(HEADER*, Packet*, DWORD, BYTE, short, short);
-void createPacket_ATTACK2(HEADER*, Packet*, DWORD, BYTE, short, short);
-void createPacket_ATTACK3(HEADER*, Packet*, DWORD, BYTE, short, short);
-void createPacket_DAMAGE(HEADER*, Packet*, DWORD, DWORD, char);
-void createPacket_DELETE(HEADER*, Packet*, DWORD);
+void createPacket_CREATE_MY_CHARACTER(Packet*, DWORD, BYTE, short, short, char);
+void createPacket_CREATE_OTHER_CHARACTER(Packet*, DWORD, BYTE, short, short, char);
+void createPacket_MOVE_START(Packet*, DWORD, BYTE, short, short);
+void createPacket_MOVE_STOP(Packet*, DWORD, BYTE, short, short);
+void createPacket_ATTACK1(Packet*, DWORD, BYTE, short, short);
+void createPacket_ATTACK2(Packet*, DWORD, BYTE, short, short);
+void createPacket_ATTACK3(Packet*, DWORD, BYTE, short, short);
+void createPacket_DAMAGE(Packet*, DWORD, DWORD, char);
+void createPacket_DELETE(Packet*, DWORD);

@@ -1,4 +1,5 @@
 #pragma once
+#include "Packet.h"
 #include "Protocol.h"
 #include "Session.h"
 
@@ -10,7 +11,7 @@ void networkProc();
 void acceptProc();
 void readProc(SESSION*);
 void writeProc(SESSION*);
-void unicast(SESSION*, HEADER*, char*);
-void broadcast(SESSION*, HEADER*, char*);
+void unicast(SESSION*, Packet*);
+void broadcast(SESSION*, Packet*);
 void disconnect(SESSION*);
 void deleteUser();

@@ -37,7 +37,7 @@ public:
 	int MoveRear(int);
 	int MoveFront(int);
 
-private:
+protected:
 	char* m_bufferPtr;
 	int m_bufferSize;
 

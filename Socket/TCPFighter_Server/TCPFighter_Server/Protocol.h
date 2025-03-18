@@ -29,7 +29,7 @@
 	BYTE	bySize;			// 패킷 사이즈.
 	BYTE	byType;			// 패킷타입.
 */
-struct HEADER
+struct Header
 {
 	BYTE p_code; // 네트워크
 	BYTE p_size; // 네트워크
@@ -126,6 +126,7 @@ struct SC_DELETE_CHARACTER
 #define dfPACKET_MOVE_DIR_RD					5
 #define dfPACKET_MOVE_DIR_DD					6
 #define dfPACKET_MOVE_DIR_LD					7
+#define dfPACKET_MOVE_STOP						8
 
 struct CS_MOVE_START
 {
