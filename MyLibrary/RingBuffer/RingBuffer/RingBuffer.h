@@ -4,16 +4,6 @@
 
 class RingBuffer
 {
-<<<<<<< Updated upstream
-private:
-	char* m_bufferPtr;
-	int m_bufferSize;
-
-	int m_front;
-	int m_rear;
-
-=======
->>>>>>> Stashed changes
 public:
 	RingBuffer();
 	RingBuffer(int);
@@ -47,7 +37,7 @@ public:
 	int MoveRear(int);
 	int MoveFront(int);
 
-private:
+protected:
 	char* m_bufferPtr;
 	int m_bufferSize;
 
