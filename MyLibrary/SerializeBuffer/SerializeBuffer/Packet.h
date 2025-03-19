@@ -9,7 +9,7 @@ class Packet
 public:
 	Packet();
 	Packet(int);
-	virtual ~Packet();
+	~Packet();
 
 	void Clear();
 
@@ -36,8 +36,8 @@ public:
 	Packet& operator<<(unsigned short);
 	Packet& operator<<(short);
 
+	Packet& operator<<(DWORD);
 	Packet& operator<<(int);
-	Packet& operator<<(long);
 	Packet& operator<<(float);
 
 	Packet& operator<<(__int64);
@@ -50,8 +50,8 @@ public:
 	Packet& operator>>(WORD&);
 	Packet& operator>>(short&);
 
-	Packet& operator>>(int&);
 	Packet& operator>>(DWORD&);
+	Packet& operator>>(int&);
 	Packet& operator>>(float&);
 
 	Packet& operator>>(__int64&);

@@ -109,7 +109,7 @@ Packet& Packet::operator<<(short value)
 Packet& Packet::operator<<(DWORD value)
 {
 	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(long));
-	m_rear = (m_rear + sizeof(long)) % m_bufferSize;
+	m_rear = (m_rear + sizeof(DWORD)) % m_bufferSize;
 	m_dataSize += sizeof(long);
 	return *this;
 }
