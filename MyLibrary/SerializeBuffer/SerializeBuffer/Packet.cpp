@@ -67,13 +67,13 @@ int Packet::MoveReadPos(unsigned int size)
 	return size;
 }
 
-Packet& Packet::operator=(Packet& srcPacket)
+inline Packet& Packet::operator=(Packet& srcPacket)
 {
 	memcpy(m_bufferPtr, &srcPacket, srcPacket.GetDataSize());
 	return *this;
 }
 
-Packet& Packet::operator<<(unsigned char value)
+inline Packet& Packet::operator<<(unsigned char value)
 {
 	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(unsigned char));
 	m_rear = (m_rear + sizeof(unsigned char)) % m_bufferSize;
@@ -81,7 +81,7 @@ Packet& Packet::operator<<(unsigned char value)
 	return *this;
 }
 
-Packet& Packet::operator<<(char value)
+inline Packet& Packet::operator<<(char value)
 {
 	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(char));
 	m_rear = (m_rear + sizeof(char)) % m_bufferSize;
@@ -89,7 +89,7 @@ Packet& Packet::operator<<(char value)
 	return *this;
 }
 
-Packet& Packet::operator<<(unsigned short value)
+inline Packet& Packet::operator<<(unsigned short value)
 {
 	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(unsigned short));
 	m_rear = (m_rear + sizeof(unsigned short)) % m_bufferSize;
@@ -97,7 +97,7 @@ Packet& Packet::operator<<(unsigned short value)
 	return *this;
 }
 
-Packet& Packet::operator<<(short value)
+inline Packet& Packet::operator<<(short value)
 {
 	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(short));
 	m_rear = (m_rear + sizeof(short)) % m_bufferSize;
@@ -105,7 +105,7 @@ Packet& Packet::operator<<(short value)
 	return *this;
 }
 
-Packet& Packet::operator<<(DWORD value)
+inline Packet& Packet::operator<<(DWORD value)
 {
 	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(DWORD));
 	m_rear = (m_rear + sizeof(DWORD)) % m_bufferSize;
@@ -113,7 +113,7 @@ Packet& Packet::operator<<(DWORD value)
 	return *this;
 }
 
-Packet& Packet::operator<<(int value)
+inline Packet& Packet::operator<<(int value)
 {
 	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(int));
 	m_rear = (m_rear + sizeof(int)) % m_bufferSize;
@@ -121,7 +121,7 @@ Packet& Packet::operator<<(int value)
 	return *this;
 }
 
-Packet& Packet::operator<<(float value)
+inline Packet& Packet::operator<<(float value)
 {
 	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(float));
 	m_rear = (m_rear + sizeof(float)) % m_bufferSize;
@@ -129,7 +129,7 @@ Packet& Packet::operator<<(float value)
 	return *this;
 }
 
-Packet& Packet::operator<<(__int64 value)
+inline Packet& Packet::operator<<(__int64 value)
 {
 	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(__int64));
 	m_rear = (m_rear + sizeof(__int64)) % m_bufferSize;
@@ -137,7 +137,7 @@ Packet& Packet::operator<<(__int64 value)
 	return *this;
 }
 
-Packet& Packet::operator<<(double value)
+inline Packet& Packet::operator<<(double value)
 {
 	memcpy(m_bufferPtr + m_rear + 1, &value, sizeof(double));
 	m_rear = (m_rear + sizeof(double)) % m_bufferSize;
@@ -145,7 +145,7 @@ Packet& Packet::operator<<(double value)
 	return *this;
 }
 
-Packet& Packet::operator>>(BYTE& value)
+inline Packet& Packet::operator>>(BYTE& value)
 {
 	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(BYTE));
 	m_front = (m_front + sizeof(BYTE)) % m_bufferSize;
@@ -153,7 +153,7 @@ Packet& Packet::operator>>(BYTE& value)
 	return *this;
 }
 
-Packet& Packet::operator>>(char& value)
+inline Packet& Packet::operator>>(char& value)
 {
 	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(char));
 	m_front = (m_front + sizeof(char)) % m_bufferSize;
@@ -161,7 +161,7 @@ Packet& Packet::operator>>(char& value)
 	return *this;
 }
 
-Packet& Packet::operator>>(WORD& value)
+inline Packet& Packet::operator>>(WORD& value)
 {
 	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(WORD));
 	m_front = (m_front + sizeof(WORD)) % m_bufferSize;
@@ -169,7 +169,7 @@ Packet& Packet::operator>>(WORD& value)
 	return *this;
 }
 
-Packet& Packet::operator>>(short& value)
+inline Packet& Packet::operator>>(short& value)
 {
 	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(short));
 	m_front = (m_front + sizeof(short)) % m_bufferSize;
@@ -177,7 +177,7 @@ Packet& Packet::operator>>(short& value)
 	return *this;
 }
 
-Packet& Packet::operator>>(DWORD& value)
+inline Packet& Packet::operator>>(DWORD& value)
 {
 	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(DWORD));
 	m_front = (m_front + sizeof(DWORD)) % m_bufferSize;
@@ -185,7 +185,7 @@ Packet& Packet::operator>>(DWORD& value)
 	return *this;
 }
 
-Packet& Packet::operator>>(int& value)
+inline Packet& Packet::operator>>(int& value)
 {
 	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(int));
 	m_front = (m_front + sizeof(int)) % m_bufferSize;
@@ -193,7 +193,7 @@ Packet& Packet::operator>>(int& value)
 	return *this;
 }
 
-Packet& Packet::operator>>(float& value)
+inline Packet& Packet::operator>>(float& value)
 {
 	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(float));
 	m_front = (m_front + sizeof(float)) % m_bufferSize;
@@ -201,7 +201,7 @@ Packet& Packet::operator>>(float& value)
 	return *this;
 }
 
-Packet& Packet::operator>>(__int64& value)
+inline Packet& Packet::operator>>(__int64& value)
 {
 	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(__int64));
 	m_front = (m_front + sizeof(__int64)) % m_bufferSize;
@@ -209,7 +209,7 @@ Packet& Packet::operator>>(__int64& value)
 	return *this;
 }
 
-Packet& Packet::operator>>(double& value)
+inline Packet& Packet::operator>>(double& value)
 {
 	memcpy(&value, m_bufferPtr + m_front + 1, sizeof(double));
 	m_front = (m_front + sizeof(double)) % m_bufferSize;
