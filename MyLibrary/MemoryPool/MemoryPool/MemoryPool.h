@@ -81,7 +81,7 @@ namespace myLibrary
 
 		virtual ~MemoryPool()
 		{
-
+			
 		}
 
 		// 할당 (스택에서 pop 또는 생성)

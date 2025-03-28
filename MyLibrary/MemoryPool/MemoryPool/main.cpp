@@ -13,13 +13,13 @@ public:
 
 int main()
 {
-	myLibrary::MemoryPool<Player> playerList(10, 0, true);
-	myLibrary::MemoryPool<Player> playerList2(10, 0, false);
+	myLibrary::MemoryPool<Player> playerList(0, 0, true);
 
-	printf("123\n");
-
-	for (int i = 0; i < 11; i++)
+	for (int i = 0; i < 1000; i++)
 	{
-		Player* player = playerList2.Alloc();
+		Player* player = playerList.Alloc();
+		playerList.Free(player);
 	}
+
+	printf("1234");
 }
