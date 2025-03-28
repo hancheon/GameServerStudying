@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{915aa55d-0ca3-4a9f-8792-cb608d838c9c}</ProjectGuid>
-    <RootNamespace>ObjectFreeList</RootNamespace>
+    <ProjectGuid>{354cfae9-ffe6-48c1-9b21-76d2168ccb28}</ProjectGuid>
+    <RootNamespace>MemoryPool</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -129,10 +129,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="ObjectFreeList.cpp" />
+    <ClCompile Include="MemoryPool.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ObjectFreeList.h" />
+    <ClInclude Include="MemoryPool.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
