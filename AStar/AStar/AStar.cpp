@@ -6,10 +6,12 @@
 #include "windowsx.h"
 #include <iostream>
 #include <list>
+#include <algorithm>
 
 #define MAX_LOADSTRING 100
 
 #define GRID_SIZE 16
+#define GRID_SIZE_ENLARGEMENT 52
 #define GRID_WIDTH 100
 #define GRID_HEIGHT 50
 
@@ -18,16 +20,18 @@ int increaseY[8] = { 0, -1, -1, -1, 0, 1, 1, 1 };
 
 enum BLOCK_COLOR
 {
-    OBSTACLE = 1, BEGIN, END, OPEN, CLOSE, PATH
+    BLANK = 0, OBSTACLE, BEGIN, END, OPEN, CLOSE, PATH
 };
 
 struct Node
 {
+    Node* parent; // 부모노드
+
     int x;
     int y;
-    int g; // 출발지에서 노드까지 비용 -> 맨해튼
-    double h; // 노드에서 목적지까지 비용 -> 유클리드
-    int f; // 출발지에서 해당 노드 거쳐 목적지까지 비용
+    double g; // 출발지에서 노드까지 비용 -> 유클리드
+    int h; // 노드에서 목적지까지 비용 -> 맨해튼
+    double f; // 출발지에서 해당 노드 거쳐 목적지까지 비용
 };
 
 // 전역 변수:
@@ -45,8 +49,12 @@ HBRUSH hBeginBrush;
 HBRUSH hEndBrush;
 HBRUSH hCloseBrush;
 HBRUSH hOpenBrush;
+HBRUSH hPathBrush;
+
 HPEN hGridPen;
+
 char tile[GRID_HEIGHT][GRID_WIDTH]; // 0: 장애물 없음, 1: 장애물 있음
+int gridSize = GRID_SIZE;
 
 Node* beginNode;
 Node* endNode;
@@ -166,14 +174,14 @@ void RenderGrid(HDC hdc)
     for (int wCnt = 0; wCnt <= GRID_WIDTH; wCnt++)
     {
         MoveToEx(hdc, x, 0, NULL);
-        LineTo(hdc, x, GRID_HEIGHT * GRID_SIZE);
-        x += GRID_SIZE;
+        LineTo(hdc, x, GRID_HEIGHT * gridSize);
+        x += gridSize;
     }
     for (int hCnt = 0; hCnt <= GRID_HEIGHT; hCnt++)
     {
         MoveToEx(hdc, 0, y, NULL);
-        LineTo(hdc, GRID_WIDTH * GRID_SIZE, y);
-        y += GRID_SIZE;
+        LineTo(hdc, GRID_WIDTH * gridSize, y);
+        y += gridSize;
     }
     SelectObject(hdc, hOldPen);
 }
@@ -196,31 +204,58 @@ void RenderBlock(HDC hdc)
         {
             switch (tile[hCnt][wCnt])
             {
-            case 1:
+            case OBSTACLE:
             {
                 hOldBrush = (HBRUSH)SelectObject(hdc, hObstacleBrush);
                 SelectObject(hdc, GetStockObject(NULL_PEN));
-                x = wCnt * GRID_SIZE;
-                y = hCnt * GRID_SIZE;
-                Rectangle(hdc, x, y, x + GRID_SIZE + 2, y + GRID_SIZE + 2);
+                x = wCnt * gridSize;
+                y = hCnt * gridSize;
+                Rectangle(hdc, x, y, x + gridSize + 2, y + gridSize + 2);
             }
                 break;
-            case 2:
+            case BEGIN:
             {
                 hOldBrush = (HBRUSH)SelectObject(hdc, hBeginBrush);
                 SelectObject(hdc, GetStockObject(NULL_PEN));
-                x = wCnt * GRID_SIZE;
-                y = hCnt * GRID_SIZE;
-                Rectangle(hdc, x, y, x + GRID_SIZE + 2, y + GRID_SIZE + 2);
+                x = wCnt * gridSize;
+                y = hCnt * gridSize;
+                Rectangle(hdc, x, y, x + gridSize + 2, y + gridSize + 2);
             }
                 break;
-            case 3:
+            case END:
             {
                 hOldBrush = (HBRUSH)SelectObject(hdc, hEndBrush);
                 SelectObject(hdc, GetStockObject(NULL_PEN));
-                x = wCnt * GRID_SIZE;
-                y = hCnt * GRID_SIZE;
-                Rectangle(hdc, x, y, x + GRID_SIZE + 2, y + GRID_SIZE + 2);
+                x = wCnt * gridSize;
+                y = hCnt * gridSize;
+                Rectangle(hdc, x, y, x + gridSize + 2, y + gridSize + 2);
+            }
+                break;
+            case OPEN:
+            {
+                hOldBrush = (HBRUSH)SelectObject(hdc, hOpenBrush);
+                SelectObject(hdc, GetStockObject(NULL_PEN));
+                x = wCnt * gridSize;
+                y = hCnt * gridSize;
+                Rectangle(hdc, x, y, x + gridSize + 2, y + gridSize + 2);
+            }
+                break;
+            case CLOSE:
+            {
+                hOldBrush = (HBRUSH)SelectObject(hdc, hCloseBrush);
+                SelectObject(hdc, GetStockObject(NULL_PEN));
+                x = wCnt * gridSize;
+                y = hCnt * gridSize;
+                Rectangle(hdc, x, y, x + gridSize + 2, y + gridSize + 2);
+            }
+                break;
+            case PATH:
+            {
+                hOldBrush = (HBRUSH)SelectObject(hdc, hPathBrush);
+                SelectObject(hdc, GetStockObject(NULL_PEN));
+                x = wCnt * gridSize;
+                y = hCnt * gridSize;
+                Rectangle(hdc, x, y, x + gridSize + 2, y + gridSize + 2);
             }
                 break;
             default:
@@ -236,48 +271,44 @@ void RenderBlock(HDC hdc)
 //===================================================================//
 // A* 길찾기 로직
 //===================================================================//
-int BeginToNode(Node* node)
-{
-    node->g = abs(node->x - beginNode->x) + abs(node->y - beginNode->y);
-}
-
-double NodeToEnd(Node* node)
-{
-    node->h = sqrt(pow(endNode->x - node->x, 2) + pow(endNode->y - node->y, 2));
-}
-
-double Matrix(Node* node)
-{
-    node->f = node->g + node->h;
-}
-
 bool isArrive(Node* node)
 {
     return (node->x == endNode->x) && (node->y == endNode->y);
 }
 
-void FindPath()
+bool compare(Node* first, Node* second)
+{
+    return first->f >= second->f;
+}
+
+void FindPath(HDC hdc)
 {
     if (beginNode == NULL || endNode == NULL)
         return;
 
-    std::list<Node*> OpenList;
-    std::list<Node*> CloseList;
+    std::list<Node*> OpenList; // 후보군 리스트
+    std::list<Node*> CloseList; // 확인한 노드 리스트
+    std::list<Node*>::iterator iter;
+
+    // 시작 노드를 후보군 리스트에 넣고 시작
     OpenList.push_back(beginNode);
-    while (OpenList.size() != 0)
+    while (OpenList.size() != 0) // 후보군 리스트가 0이 되면 종료 (더 이상 길이 없음)
     {
         Node* node = OpenList.back();
         OpenList.pop_back();
         CloseList.push_back(node);
+        if (node != beginNode)
+            tile[node->y][node->x] = CLOSE;
         
+        // 노드 8방향 확인 후 OpenList 설정
         for (int cnt = 0; cnt < 8; cnt++)
         {
             Node* nextNode = new Node;
             nextNode->x = node->x + increaseX[cnt];
             nextNode->y = node->y + increaseY[cnt];
 
-            // 유효한 좌표인지 확인
-            if (nextNode->x < 0 || nextNode->x > GRID_WIDTH || nextNode->y < 0 || nextNode->y > GRID_HEIGHT)
+            // 유효한 좌표인지 확인 (맵 밖, 장애물 확인)
+            if (nextNode->x < 0 || nextNode->x > GRID_WIDTH || nextNode->y < 0 || nextNode->y > GRID_HEIGHT || tile[nextNode->y][nextNode->x] == OBSTACLE)
             {
                 delete nextNode;
                 continue;
@@ -285,21 +316,57 @@ void FindPath()
 
             // 목적지인지 확인
             if (isArrive(nextNode))
+            {
+                // 길 그리기
+                Node* pathNode = node;
+                while (pathNode != beginNode)
+                {
+                    tile[pathNode->y][pathNode->x] = PATH;
+                    pathNode = pathNode->parent;
+                } 
                 return;
+            }
 
+            bool isDup = false;
             // CloseList에 있는지 확인
-            std::list<Node*>::iterator iter;
             for (iter = CloseList.begin(); iter != CloseList.end(); iter++)
             {
                 if ((*iter)->x == nextNode->x && (*iter)->y == nextNode->y)
                 {
+                    isDup = true;
                     break;
                 }
             }
 
+            if (isDup)
+            {
+                delete nextNode;
+                continue;
+            }
+
+            // 부모노드를 변경해야하는지 확인
+            
+
+            // 위 조건 해당하지 않으면 나머지 설정
+            nextNode->parent = node;
+            // 유클리드 거리방식
+            nextNode->g = 1.4 * (pow(endNode->x - nextNode->x, 2) + pow(endNode->y - nextNode->y, 2));
+            // 맨해튼 거리방식
+            nextNode->h = abs(nextNode->x - beginNode->x) + abs(nextNode->y - beginNode->y);
+            nextNode->f = nextNode->g + nextNode->h;
+
+            // OpenList에 추가
             OpenList.push_back(nextNode);
+            tile[nextNode->y][nextNode->x] = OPEN;
+
+            //LineTo(hdc, )
         }
+
+        // Matrix 기준으로 OpenList 정렬
+        OpenList.sort(compare);
     }
+
+
 }
 
 //
@@ -318,8 +385,16 @@ void FindPath()
 
 bool isErase = false;
 bool isDrag = false;
-bool isBegin = false;
-bool isEnd = false;
+
+bool beginExist = false;
+bool endExist = false;
+
+bool isPanning = false;
+
+int oldX;
+int oldY;
+int moveX;
+int moveY;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -330,12 +405,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_LBUTTONDBLCLK: // 출발지 설정
     {
-        if (!isBegin)
+        if (!beginExist)
         {
             int xPos = GET_X_LPARAM(lParam);
             int yPos = GET_Y_LPARAM(lParam);
-            int tileX = xPos / GRID_SIZE;
-            int tileY = yPos / GRID_SIZE;
+            int tileX = xPos / gridSize;
+            int tileY = yPos / gridSize;
 
             if (tileX >= 0 && tileX < GRID_WIDTH && tileY >= 0 && tileY < GRID_HEIGHT)
             {
@@ -346,45 +421,59 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             beginNode = new Node;
             beginNode->x = tileX;
             beginNode->y = tileY;
+            beginNode->parent = NULL;
 
-            isBegin = true;
+            beginExist = true;
         }
         else
         {
             int xPos = GET_X_LPARAM(lParam);
             int yPos = GET_Y_LPARAM(lParam);
-            int tileX = xPos / GRID_SIZE;
-            int tileY = yPos / GRID_SIZE;
+            int tileX = xPos / gridSize;
+            int tileY = yPos / gridSize;
 
             if (tileX >= 0 && tileX < GRID_WIDTH && tileY >= 0 && tileY < GRID_HEIGHT)
             {
-                tile[beginNode->y][beginNode->x] = 0;
+                tile[beginNode->y][beginNode->x] = BLANK;
                 if (beginNode->x == tileX && beginNode->y == tileY)
                 {
                     delete beginNode;
-                    isBegin = false;
+                    beginExist = false;
                     InvalidateRect(hWnd, NULL, false);
                     break;
                 }
+
+                for (int hCnt = 0; hCnt < GRID_HEIGHT; hCnt++)
+                {
+                    for (int wCnt = 0; wCnt < GRID_WIDTH; wCnt++)
+                    {
+                        if (tile[hCnt][wCnt] != BEGIN && tile[hCnt][wCnt] != END && tile[hCnt][wCnt] != OBSTACLE)
+                        {
+                            tile[hCnt][wCnt] = BLANK;
+                        }
+                    }
+                }
+
                 tile[tileY][tileX] = BEGIN;
                 InvalidateRect(hWnd, NULL, false);
             }
 
             beginNode->x = tileX;
             beginNode->y = tileY;
+            beginNode->parent = NULL;
 
-            isBegin = true;
+            beginExist = true;
         }
     }
     break;
     case WM_RBUTTONDBLCLK: // 도착지 설정
     {
-        if (!isEnd)
+        if (!endExist)
         {
             int xPos = GET_X_LPARAM(lParam);
             int yPos = GET_Y_LPARAM(lParam);
-            int tileX = xPos / GRID_SIZE;
-            int tileY = yPos / GRID_SIZE;
+            int tileX = xPos / gridSize;
+            int tileY = yPos / gridSize;
 
             if (tileX >= 0 && tileX < GRID_WIDTH && tileY >= 0 && tileY < GRID_HEIGHT)
             {
@@ -395,50 +484,90 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             endNode = new Node;
             endNode->x = tileX;
             endNode->y = tileY;
+            endNode->parent = NULL;
 
-            isEnd = true;
+            endExist = true;
         }
         else
         {
             int xPos = GET_X_LPARAM(lParam);
             int yPos = GET_Y_LPARAM(lParam);
-            int tileX = xPos / GRID_SIZE;
-            int tileY = yPos / GRID_SIZE;
+            int tileX = xPos / gridSize;
+            int tileY = yPos / gridSize;
 
             if (tileX >= 0 && tileX < GRID_WIDTH && tileY >= 0 && tileY < GRID_HEIGHT)
             {
-                tile[endNode->y][endNode->x] = 0;
+                tile[endNode->y][endNode->x] = BLANK;
                 if (endNode->x == tileX && endNode->y == tileY)
                 {
                     delete endNode;
-                    isEnd = false;
+                    endExist = false;
                     InvalidateRect(hWnd, NULL, false);
                     break;
                 }
+
+                for (int hCnt = 0; hCnt < GRID_HEIGHT; hCnt++)
+                {
+                    for (int wCnt = 0; wCnt < GRID_WIDTH; wCnt++)
+                    {
+                        if (tile[hCnt][wCnt] != BEGIN && tile[hCnt][wCnt] != END && tile[hCnt][wCnt] != OBSTACLE)
+                        {
+                            tile[hCnt][wCnt] = BLANK;
+                        }
+                    }
+                }
+
                 tile[tileY][tileX] = END;
                 InvalidateRect(hWnd, NULL, false);
             }
 
             endNode->x = tileX;
             endNode->y = tileY;
+            endNode->parent = NULL;
 
-            isEnd = true;
+            endExist = true;
         }
     }
     break;
     case WM_LBUTTONDOWN: // 장애물 등록 시작
-        isDrag = true;
-        isErase = false;
+        {
+            isDrag = true;
+
+            int xPos = GET_X_LPARAM(lParam);
+            int yPos = GET_Y_LPARAM(lParam);
+            int tileX = xPos / gridSize;
+            int tileY = yPos / gridSize;
+
+            if (tileX >= 0 && tileX < GRID_WIDTH && tileY >= 0 && tileY < GRID_HEIGHT)
+            {
+                if (tile[tileY][tileX] == 1)
+                    isErase = true;
+                else
+                    isErase = false;
+            }
+        }
         break;
     case WM_LBUTTONUP: // 장애물 등록 끝
         isDrag = false;
         break;
-    case WM_RBUTTONDOWN: // 장애물 취소 시작
-        isDrag = true;
-        isErase = true;
+    case WM_RBUTTONDOWN: // 패닝 시작
+        oldX = GET_X_LPARAM(lParam);
+        oldY = GET_Y_LPARAM(lParam);
+        isPanning = true;
         break;
-    case WM_RBUTTONUP: // 장애물 취소 끝
-        isDrag = false;
+    case WM_RBUTTONUP: // 패닝 끝
+    {
+        int curX = GET_X_LPARAM(lParam);
+        int curY = GET_Y_LPARAM(lParam);
+
+        moveX = curX - oldX;
+        moveY = curY - oldY;
+
+        oldX = curX;
+        oldY = curY;
+
+        isPanning = false;
+    }
         break;
     case WM_MOUSEMOVE:
     {
@@ -446,8 +575,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             int xPos = GET_X_LPARAM(lParam);
             int yPos = GET_Y_LPARAM(lParam);
-            int tileX = xPos / GRID_SIZE;
-            int tileY = yPos / GRID_SIZE;
+            int tileX = xPos / gridSize;
+            int tileY = yPos / gridSize;
 
             if (tileX >= 0 && tileX < GRID_WIDTH && tileY >= 0 && tileY < GRID_HEIGHT)
             {
@@ -455,20 +584,58 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 InvalidateRect(hWnd, NULL, false);
             }
         }
+
+        if (isPanning)
+        {
+
+        }
     }
     break;
     case WM_KEYDOWN:
     {
-        if (wParam == VK_DELETE)
+        switch (wParam)
+        {
+        case VK_DELETE: // 일괄 삭제
         {
             memset(tile, 0, sizeof(tile));
             InvalidateRect(hWnd, NULL, false);
+            beginExist = false;
+            endExist = false;
+            delete beginNode;
+            delete endNode;
         }
-        else if (wParam == VK_RETURN)
+            break;
+        case VK_RETURN:
         {
-            FindPath();
+            for (int hCnt = 0; hCnt < GRID_HEIGHT; hCnt++)
+            {
+                for (int wCnt = 0; wCnt < GRID_WIDTH; wCnt++)
+                { 
+                    if (tile[hCnt][wCnt] != BEGIN && tile[hCnt][wCnt] != END && tile[hCnt][wCnt] != OBSTACLE)
+                    {
+                        tile[hCnt][wCnt] = BLANK;
+                    }
+                }
+            }
+            FindPath(hMemDC);
+            InvalidateRect(hWnd, NULL, false);
+        }
+            break;
+        case VK_SPACE: // 탐색 단계별로
+            break;
+        case VK_CONTROL: // 그리드 확대
+        {
+            gridSize = (gridSize == GRID_SIZE ? GRID_SIZE_ENLARGEMENT : GRID_SIZE);
+            // 좌표 표기 활성화
+            
+            InvalidateRect(hWnd, NULL, false);
+        }
+            break;
+        default:
+            break;
         }
     }
+    break;
     case WM_CREATE:
     {
         hdc = GetDC(hWnd);
@@ -479,10 +646,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         hOldMemDCBitmap = (HBITMAP)SelectObject(hMemDC, hMemDCBitmap);
         hGridPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
         hObstacleBrush = CreateSolidBrush(RGB(100, 100, 100));
-        hBeginBrush = CreateSolidBrush(RGB(0, 200, 0));
-        hEndBrush = CreateSolidBrush(RGB(200, 0, 0));
-        hCloseBrush = CreateSolidBrush(RGB(200, 0, 200));
-        hOpenBrush = CreateSolidBrush(RGB(0, 200, 200));
+        hBeginBrush = CreateSolidBrush(RGB(0, 255, 0));
+        hEndBrush = CreateSolidBrush(RGB(255, 0, 0));
+        hCloseBrush = CreateSolidBrush(RGB(255, 0, 255));
+        hOpenBrush = CreateSolidBrush(RGB(0, 0, 255));
+        hPathBrush = CreateSolidBrush(RGB(255, 255, 0));
         break;
     }
     case WM_PAINT:
