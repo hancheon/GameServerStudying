@@ -6,7 +6,6 @@
 #include "windowsx.h"
 #include <iostream>
 #include <list>
-#include <algorithm>
 
 #define MAX_LOADSTRING 100
 
@@ -56,11 +55,8 @@ HPEN hGridPen;
 char tile[GRID_HEIGHT][GRID_WIDTH]; // 0: 장애물 없음, 1: 장애물 있음
 int gridSize = GRID_SIZE;
 
-Node* beginNode;
-Node* endNode;
-
-//int beginToNodeMode = MANHATTAN;
-//int nodeToEndMode = EUCLID;
+Node* beginNode; // 출발지
+Node* endNode; // 도착지
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -271,14 +267,14 @@ void RenderBlock(HDC hdc)
 //===================================================================//
 // A* 길찾기 로직
 //===================================================================//
-bool isArrive(Node* node)
+bool isArrive(int x, int y)
 {
-    return (node->x == endNode->x) && (node->y == endNode->y);
+    return (x == endNode->x) && (y == endNode->y);
 }
 
-bool compare(Node* first, Node* second)
+bool comp(Node* first, Node* second) // 내림차순 정렬
 {
-    return first->f >= second->f;
+    return first->f <= second->f;
 }
 
 void FindPath(HDC hdc)
@@ -286,36 +282,36 @@ void FindPath(HDC hdc)
     if (beginNode == NULL || endNode == NULL)
         return;
 
+    std::list<Node*>::iterator iter;
     std::list<Node*> OpenList; // 후보군 리스트
     std::list<Node*> CloseList; // 확인한 노드 리스트
-    std::list<Node*>::iterator iter;
 
     // 시작 노드를 후보군 리스트에 넣고 시작
-    OpenList.push_back(beginNode);
+    OpenList.push_front(beginNode);
+
     while (OpenList.size() != 0) // 후보군 리스트가 0이 되면 종료 (더 이상 길이 없음)
     {
-        Node* node = OpenList.back();
-        OpenList.pop_back();
+        Node* node = *(OpenList.begin()); // 일단 문제
+        OpenList.pop_front();
         CloseList.push_back(node);
+
         if (node != beginNode)
             tile[node->y][node->x] = CLOSE;
         
         // 노드 8방향 확인 후 OpenList 설정
         for (int cnt = 0; cnt < 8; cnt++)
-        {
-            Node* nextNode = new Node;
-            nextNode->x = node->x + increaseX[cnt];
-            nextNode->y = node->y + increaseY[cnt];
+        {      
+            int nextX = node->x + increaseX[cnt];
+            int nextY = node->y + increaseY[cnt];
 
             // 유효한 좌표인지 확인 (맵 밖, 장애물 확인)
-            if (nextNode->x < 0 || nextNode->x > GRID_WIDTH || nextNode->y < 0 || nextNode->y > GRID_HEIGHT || tile[nextNode->y][nextNode->x] == OBSTACLE)
+            if (nextX < 0 || nextX > GRID_WIDTH || nextY < 0 || nextY > GRID_HEIGHT || tile[nextY][nextX] == OBSTACLE)
             {
-                delete nextNode;
                 continue;
             }
 
             // 목적지인지 확인
-            if (isArrive(nextNode))
+            if (isArrive(nextX, nextY))
             {
                 // 길 그리기
                 Node* pathNode = node;
@@ -331,7 +327,17 @@ void FindPath(HDC hdc)
             // CloseList에 있는지 확인
             for (iter = CloseList.begin(); iter != CloseList.end(); iter++)
             {
-                if ((*iter)->x == nextNode->x && (*iter)->y == nextNode->y)
+                if ((*iter)->x == nextX && (*iter)->y == nextY)
+                {
+                    isDup = true;
+                    break;
+                }
+            }
+
+            // OpenList에 있는지 확인
+            for (iter = OpenList.begin(); iter != OpenList.end(); iter++)
+            {
+                if ((*iter)->x == nextX && (*iter)->y == nextY)
                 {
                     isDup = true;
                     break;
@@ -340,14 +346,16 @@ void FindPath(HDC hdc)
 
             if (isDup)
             {
-                delete nextNode;
                 continue;
             }
 
             // 부모노드를 변경해야하는지 확인
             
 
-            // 위 조건 해당하지 않으면 나머지 설정
+            // 위 조건 해당하지 않으면 노드 생성 후 추가
+            Node* nextNode = new Node;
+            nextNode->x = nextX;
+            nextNode->y = nextY;
             nextNode->parent = node;
             // 유클리드 거리방식
             nextNode->g = 1.4 * (pow(endNode->x - nextNode->x, 2) + pow(endNode->y - nextNode->y, 2));
@@ -356,14 +364,14 @@ void FindPath(HDC hdc)
             nextNode->f = nextNode->g + nextNode->h;
 
             // OpenList에 추가
-            OpenList.push_back(nextNode);
+            OpenList.push_front(nextNode);
             tile[nextNode->y][nextNode->x] = OPEN;
 
             //LineTo(hdc, )
         }
 
         // Matrix 기준으로 OpenList 정렬
-        OpenList.sort(compare);
+        OpenList.sort(comp);
     }
 
 
