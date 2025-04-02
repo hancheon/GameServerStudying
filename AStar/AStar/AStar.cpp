@@ -6,6 +6,8 @@
 #include "windowsx.h"
 #include <iostream>
 #include <list>
+#include <string>
+#include <algorithm>
 
 #define MAX_LOADSTRING 100
 
@@ -57,6 +59,8 @@ int gridSize = GRID_SIZE;
 
 Node* beginNode; // 출발지
 Node* endNode; // 도착지
+
+bool isEnlarge = false;
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -288,6 +292,7 @@ void FindPath(HDC hdc)
 
     // 시작 노드를 후보군 리스트에 넣고 시작
     OpenList.push_front(beginNode);
+    std::make_heap(OpenList.begin(), OpenList.end());
 
     while (OpenList.size() != 0) // 후보군 리스트가 0이 되면 종료 (더 이상 길이 없음)
     {
@@ -366,6 +371,21 @@ void FindPath(HDC hdc)
             // OpenList에 추가
             OpenList.push_front(nextNode);
             tile[nextNode->y][nextNode->x] = OPEN;
+
+            // 부모 화살표 출력
+
+            // 노드 정보 출력
+
+            std::wstring gValue = std::to_wstring(nextNode->g);
+            std::wstring hValue = std::to_wstring(nextNode->h);
+            std::wstring fValue = std::to_wstring(nextNode->f);
+            std::wstring nodeAttr = L"G: " + gValue + L", H: " + hValue + L", F: " + fValue;
+            RECT pos = { nextNode->x * gridSize, nextNode->y * gridSize , (nextNode->x + 1) * gridSize, (nextNode->y + 1) * gridSize };
+            
+            if (isEnlarge)
+            {
+                DrawText(hdc, nodeAttr.c_str(), sizeof(nodeAttr), &pos, DT_CENTER);
+            }
 
             //LineTo(hdc, )
         }
@@ -635,7 +655,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             gridSize = (gridSize == GRID_SIZE ? GRID_SIZE_ENLARGEMENT : GRID_SIZE);
             // 좌표 표기 활성화
-            
+            isEnlarge = (gridSize == GRID_SIZE ? true : false);
             InvalidateRect(hWnd, NULL, false);
         }
             break;
